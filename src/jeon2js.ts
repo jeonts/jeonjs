@@ -83,6 +83,11 @@ export function jeon2js(jeon: any, options?: { json?: typeof JSON }, isTopLevel:
             if (propertyAccessResult) {
                 return propertyAccessResult
             }
+
+            // Handle switch statements
+            if (op === 'switch') {
+                return visitorRegistry.visitSwitch(operands, jeon2js, jsonImpl)
+            }
         }
 
         // Handle JSX

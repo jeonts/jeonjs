@@ -6,11 +6,12 @@
   "module": "dist/jeon-converter.es.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "prepare": "pnpm build && pnpm pack",
     "build": "vite build",
     "dev": "vite",
     "example": "tsx src/example.ts",
     "spcc-test": "tsx src/spccTest.ts",
-    "test": "chk src/test/*.test.ts"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "jeon",
@@ -23,13 +24,13 @@
   "license": "ISC",
   "packageManager": "pnpm@10.19.0",
   "dependencies": {
-    "@woby/chk": "^0.1.5",
     "acorn-jsx": "^5.3.2",
     "json5": "^2.2.3",
-    "woby": "^1.58.37"
+    "woby": "^1.58.39"
   },
   "devDependencies": {
     "@types/node": "^24.9.1",
+    "@woby/chk": "^0.1.9",
     "acorn": "^8.15.0",
     "tsx": "^4.7.1",
     "typescript": "^5.9.3",

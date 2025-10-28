@@ -12,6 +12,7 @@ import { visitFunctionCall } from './functionCallVisitor'
 import { visitObject } from './objectVisitor'
 import { visitPropertyAccess } from './propertyAccessVisitor'
 import { visitSequencing } from './sequencingVisitor'
+import { visitSwitch } from './switchVisitor'
 
 export const visitorRegistry = {
     visitString,
@@ -27,5 +28,6 @@ export const visitorRegistry = {
     visitFunctionCall,
     visitObject,
     visitPropertyAccess,
-    visitSequencing
+    visitSequencing,
+    visitSwitch
 }

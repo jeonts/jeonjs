@@ -36,8 +36,9 @@ function processValue(value) {
       // because the formatting may change during conversion
       expect(regeneratedJS).toContain('function processValue')
       expect(regeneratedJS).toContain('switch')
-      expect(regeneratedJS).toContain('case 1')
-      expect(regeneratedJS).toContain('case 2')
+      // Check for case values in a more flexible way
+      expect(regeneratedJS).toMatch(/case\s+1/)
+      expect(regeneratedJS).toMatch(/case\s+2/)
       expect(regeneratedJS).toContain('default')
       expect(regeneratedJS).toContain('return "one"')
       expect(regeneratedJS).toContain('return "two"')
