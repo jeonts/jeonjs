@@ -6,7 +6,6 @@
   "module": "dist/jeon-converter.es.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prepare": "pnpm build && pnpm pack",
     "build": "vite build",
     "dev": "vite",
     "example": "tsx src/example.ts",
@@ -32,7 +31,6 @@
     "@types/node": "^24.9.1",
     "@woby/chk": "^0.1.13",
     "acorn": "^8.15.0",
-    "pnpm": "^10.19.0",
     "tsx": "^4.7.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.12"
