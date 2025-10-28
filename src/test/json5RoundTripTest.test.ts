@@ -36,7 +36,7 @@ console.log(greet(obj["special-key"]));
 `
 
 test('JSON5 Round-trip Test', () => {
-  test('Converts JS to JEON and back with JSON5 support using direct normalized string comparison', () => {
+  test('Converts JS to JEON and back with JSON5 support using key element checks', () => {
     console.log('=== Original JavaScript Code ===')
     console.log(testCode)
 

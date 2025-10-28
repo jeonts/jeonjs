@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.9.1",
-    "@woby/chk": "^0.1.9",
+    "@woby/chk": "^0.1.13",
     "acorn": "^8.15.0",
     "tsx": "^4.7.1",
     "typescript": "^5.9.3",
