@@ -1,6 +1,6 @@
 {
   "name": "jeon",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "JEON (JSON-based Executable Object Notation) converter for TypeScript/JavaScript",
   "main": "dist/jeon-converter.cjs.js",
   "module": "dist/jeon-converter.es.js",
@@ -32,6 +32,7 @@
     "@types/node": "^24.9.1",
     "@woby/chk": "^0.1.13",
     "acorn": "^8.15.0",
+    "pnpm": "^10.19.0",
     "tsx": "^4.7.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.12"
