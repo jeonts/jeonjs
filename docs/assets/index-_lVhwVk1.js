@@ -3752,9 +3752,9 @@ function nextLineBreak(code, from, end) {
 }
 var nonASCIIwhitespace = /[\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]/;
 var skipWhiteSpace = /(?:\s|\/\/.*|\/\*[^]*?\*\/)*/g;
-var ref = Object.prototype;
-var hasOwnProperty = ref.hasOwnProperty;
-var toString = ref.toString;
+var ref$1 = Object.prototype;
+var hasOwnProperty = ref$1.hasOwnProperty;
+var toString = ref$1.toString;
 var hasOwn = Object.hasOwn || (function(obj, propName) {
   return hasOwnProperty.call(obj, propName);
 });
@@ -19187,7 +19187,6 @@ const App = () => {
   const highlightCodeBlocks = () => {
     setTimeout(() => {
       Prism$1.highlightAll();
-      initCollapsible();
     }, 0);
   };
   const handleJeonInput = (e) => {
@@ -19693,5 +19692,9 @@ const initCollapsible = () => {
     });
   });
 };
-render(/* @__PURE__ */ jsx$1(App, {}), document.getElementById("app"));
-//# sourceMappingURL=index-3YTKA7Io.js.map
+const ref = observable();
+effect(() => {
+  initCollapsible();
+});
+render(/* @__PURE__ */ jsx$1(App, { ref }), document.getElementById("app"));
+//# sourceMappingURL=index-_lVhwVk1.js.map

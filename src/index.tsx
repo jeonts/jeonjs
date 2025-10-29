@@ -1,5 +1,5 @@
 import './index.css'
-import { $, $$, render } from 'woby'
+import { $, $$, render, useEffect } from 'woby'
 import { jeon2js } from './jeon2js'
 import { js2jeon } from './js2jeon'
 import JSON5 from 'json5'
@@ -99,7 +99,6 @@ const App = () => {
     setTimeout(() => {
       Prism.highlightAll()
       // Initialize collapsible functionality after Prism highlighting
-      initCollapsible()
     }, 0)
   }
 
@@ -659,4 +658,8 @@ const initCollapsible = () => {
   })
 }
 
-render(<App />, document.getElementById('app'))
+const ref = $()
+useEffect(() => {
+  initCollapsible()
+})
+render(<App ref={ref} />, document.getElementById('app'))
