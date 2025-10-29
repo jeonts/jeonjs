@@ -61,7 +61,7 @@ export default defineConfig(({ command, mode }) => {
       // Generate manifest for deployment tracking
       manifest: true,
       // Minify for production
-      minify: 'esbuild',
+      //minify: 'esbuild',
       // Generate sourcemaps for production
       sourcemap: true
     },
