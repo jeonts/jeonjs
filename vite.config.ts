@@ -60,8 +60,8 @@ export default defineConfig(({ command, mode }) => {
       cssCodeSplit: true,
       // Generate manifest for deployment tracking
       manifest: true,
-      // Minify for production
-      //minify: 'esbuild',
+      // Disable minification for documentation build
+      minify: false,
       // Generate sourcemaps for production
       sourcemap: true
     },
