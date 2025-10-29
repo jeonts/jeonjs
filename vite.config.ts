@@ -51,7 +51,7 @@ export default defineConfig(({ command, mode }) => {
   return {
     build: {
       // App build for documentation/demo
-      outDir: 'build',
+      outDir: 'docs',
       assetsDir: 'assets',
       // Enable CSS code splitting
       cssCodeSplit: true,
