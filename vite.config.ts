@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
+import tailwindcss from '@tailwindcss/vite'
 
 // Dual build configuration
 // 1. Library build: src/index.ts -> dist/
-// 2. App build: index.html -> build/
+// 2. App build: index.html -> docs/
 
 export default defineConfig(({ command, mode }) => {
   // Library build configuration
@@ -77,6 +78,9 @@ export default defineConfig(({ command, mode }) => {
           '.ts': 'tsx'
         }
       }
-    }
+    },
+    plugins: [
+      tailwindcss()
+    ]
   }
 })

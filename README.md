@@ -6,7 +6,7 @@ A bidirectional converter between JEON (JSON-based Executable Object Notation) a
 
 ## Demo
 
-Playground: [https://jeon-js.web.app/](https://jeon-js.web.app/)
+Playground: [https://jeonts.github.io/jeonjs//](https://jeonts.github.io/jeonjs//)
 
 Repository: [https://github.com/jeonts/jeonjs](https://github.com/jeonts/jeonjs)
 
@@ -37,7 +37,7 @@ Converts a JEON object into a JavaScript code string. The optional `options` par
 
 **Example: Converting a JEON function to JavaScript**
 
-```typescript
+```
 import { jeon2js } from 'jeon';
 
 const jeonFunction = {
@@ -48,7 +48,12 @@ const jeonFunction = {
 
 const jsCode = jeon2js(jeonFunction);
 console.log(jsCode);
-// Output: function(a, b) { return (a + b); }
+```
+
+Output (single line, always visible):
+
+```
+function(a, b) { return (a + b); }
 ```
 
 ### `js2jeon(code: string, options?: { json?: typeof JSON }): any`
@@ -57,7 +62,7 @@ Converts a JavaScript code string into a JEON object. The optional `options` par
 
 **Example: Converting a JavaScript function to JEON**
 
-```typescript
+```
 import { js2jeon } from 'jeon';
 
 const tsCode = `
@@ -68,24 +73,28 @@ function sum(a, b) {
 
 const jeon = js2jeon(tsCode);
 console.log(JSON.stringify(jeon, null, 2));
-// Output:
-// {
-//   "function(a, b)": [
-//     {
-//       "return": {
-//         "+": [
-//           "@a",
-//           "@b"
-//         ]
-//       }
-//     }
-//   ]
-// }
+```
+
+Output (multi-line, collapsed by default in web documentation):
+
+```
+{
+  "function(a, b)": [
+    {
+      "return": {
+        "+": [
+          "@a",
+          "@b"
+        ]
+      }
+    }
+  ]
+}
 ```
 
 **Example: Converting a JavaScript class to JEON**
 
-```typescript
+```
 import { js2jeon } from 'jeon';
 
 const classCode = `
@@ -102,48 +111,52 @@ class Person {
 
 const classJeon = js2jeon(classCode);
 console.log(JSON.stringify(classJeon, null, 2));
-// Output:
-// {
-//   "class Person": {
-//     "constructor(name)": {
-//       "function(name)": [
-//         {
-//           "=": [
-//             {
-//               ".": [
-//                 "@this",
-//                 "name"
-//               ]
-//             },
-//             "@name"
-//           ]
-//         }
-//       ]
-//     },
-//     "greet()": {
-//       "function()": [
-//         {
-//           "return": {
-//             "+": [
-//               "Hello, ",
-//               {
-//                 ".": [
-//                   "@this",
-//                   "name"
-//                 ]
-//               }
-//             ]
-//           }
-//         }
-//       ]
-//     }
-//   }
-// }
+```
+
+Output (multi-line, collapsed by default in web documentation):
+
+```
+{
+  "class Person": {
+    "constructor(name)": {
+      "function(name)": [
+        {
+          "=": [
+            {
+              ".": [
+                "@this",
+                "name"
+              ]
+            },
+            "@name"
+          ]
+        }
+      ]
+    },
+    "greet()": {
+      "function()": [
+        {
+          "return": {
+            "+": [
+              "Hello, ",
+              {
+                ".": [
+                  "@this",
+                  "name"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
 ```
 
 **Example: Converting JSX and Async/Await to JEON**
 
-```typescript
+```
 import { js2jeon } from 'jeon';
 
 const jsxCode = `
@@ -161,68 +174,72 @@ const element = <div className="container">
 
 const jsxJeon = js2jeon(jsxCode);
 console.log(JSON.stringify(jsxJeon, null, 2));
-// Output:
-// [
-//   {
-//     "async function fetchData()": [
-//       {
-//         "@": {
-//           "response": {
-//             "await": {
-//               "fetch()": [
-//                 "/api/data"
-//               ]
-//             }
-//           }
-//         }
-//       },
-//       {
-//         "@": {
-//           "data": {
-//             "await": {
-//               "()": [
-//                 {
-//                   ".": [
-//                     "@response",
-//                     "json"
-//                   ]
-//                 }
-//               ]
-//             }
-//           }
-//         }
-//       },
-//       {
-//         "return": "@data"
-//       }
-//     ]
-//   },
-//   {
-//     "@": {
-//       "element": {
-//         "<div>": {
-//           "className": "container",
-//           "children": [
-//             {
-//               "<h1>": {
-//                 "children": [
-//                   "Hello World"
-//                 ]
-//               }
-//             },
-//             {
-//               "<p>": {
-//                 "children": [
-//                   "@fetchData"
-//                 ]
-//               }
-//             }
-//           ]
-//         }
-//       }
-//     }
-//   }
-// ]
+```
+
+Output (multi-line, collapsed by default in web documentation):
+
+```
+[
+  {
+    "async function fetchData()": [
+      {
+        "@": {
+          "response": {
+            "await": {
+              "fetch()": [
+                "/api/data"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "@": {
+          "data": {
+            "await": {
+              "()": [
+                {
+                  ".": [
+                    "@response",
+                    "json"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "return": "@data"
+      }
+    ]
+  },
+  {
+    "@": {
+      "element": {
+        "<div>": {
+          "className": "container",
+          "children": [
+            {
+              "<h1>": {
+                "children": [
+                  "Hello World"
+                ]
+              }
+            },
+            {
+              "<p>": {
+                "children": [
+                  "@fetchData"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+]
 ```
 
 

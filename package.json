@@ -10,6 +10,7 @@
     "build:app": "vite build",
     "build": "pnpm build:lib && pnpm build:app",
     "dev": "vite",
+    "preview": "vite preview",
     "example": "tsx src/example.ts",
     "spcc-test": "tsx src/spccTest.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -30,9 +31,13 @@
     "woby": "^1.58.39"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.16",
     "@types/node": "^24.9.1",
     "@woby/chk": "^0.1.13",
     "acorn": "^8.15.0",
+    "autoprefixer": "^10.4.21",
+    "prismjs": "^1.30.0",
+    "tailwindcss": "^4.1.16",
     "tsx": "^4.7.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.12"
