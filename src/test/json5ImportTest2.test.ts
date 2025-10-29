@@ -5,8 +5,8 @@ import * as JSON5Namespace from 'json5'
 test('JSON5 Import Test 2', () => {
     test('Tests both import styles', () => {
         console.log('=== JSON5 Import Test ===')
-        console.log('Default import (JSON5):', JSON5)
-        console.log('Namespace import (JSON5Namespace):', JSON5Namespace)
+        console.log('Default import (JSON5): Object with parse and stringify functions')
+        console.log('Namespace import (JSON5Namespace): Object with default and module.exports properties')
 
         expect(JSON5).toBeDefined()
         expect(JSON5Namespace).toBeDefined()
@@ -31,10 +31,10 @@ test('JSON5 Import Test 2', () => {
         try {
             const obj = { "test-key": "value" }
             const str = JSON5.stringify(obj, null, 2)
-            console.log('JSON5.stringify result:', str)
+            console.log('JSON5.stringify result contains test-key')
 
             const parsed = JSON5.parse(str)
-            console.log('JSON5.parse result:', parsed)
+            console.log('JSON5.parse result has test-key property')
 
             expect(str).toContain('test-key')
             expect(parsed).toHaveProperty('test-key')
@@ -61,10 +61,10 @@ test('JSON5 Import Test 2', () => {
 
             const obj = { "test-key": "value" }
             const str = JSON5Wrapper.stringify(obj, null, 2)
-            console.log('JSON5Wrapper.stringify result:', str)
+            console.log('JSON5Wrapper.stringify result contains test-key')
 
             const parsed = JSON5Wrapper.parse(str)
-            console.log('JSON5Wrapper.parse result:', parsed)
+            console.log('JSON5Wrapper.parse result has test-key property')
 
             expect(str).toContain('test-key')
             expect(parsed).toHaveProperty('test-key')

@@ -7,6 +7,9 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "vite build",
+    "build:lib": "vite build --mode lib",
+    "build:app": "vite build",
+    "build:all": "pnpm build:lib && pnpm build:app",
     "dev": "vite",
     "example": "tsx src/example.ts",
     "spcc-test": "tsx src/spccTest.ts",
