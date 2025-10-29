@@ -50,6 +50,8 @@ export default defineConfig(({ command, mode }) => {
 
   // App build configuration (default)
   return {
+    // Set base path for GitHub Pages
+    base: '/jeonjs/',
     build: {
       // App build for documentation/demo
       outDir: 'docs',
