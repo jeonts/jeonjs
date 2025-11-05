@@ -369,6 +369,10 @@
     margin-inline: auto;
   }
 
+  .my-4 {
+    margin-block: calc(var(--spacing) * 4);
+  }
+
   .my-6 {
     margin-block: calc(var(--spacing) * 6);
   }
@@ -449,6 +453,10 @@
     height: calc(var(--spacing) * 80);
   }
 
+  .min-h-\[200px\] {
+    min-height: 200px;
+  }
+
   .w-full {
     width: 100%;
   }
@@ -487,10 +495,6 @@
 
   .items-center {
     align-items: center;
-  }
-
-  .justify-between {
-    justify-content: space-between;
   }
 
   .gap-6 {
@@ -542,6 +546,11 @@
     border-left-width: 4px;
   }
 
+  .border-none {
+    --tw-border-style: none;
+    border-style: none;
+  }
+
   .border-blue-500 {
     border-color: var(--color-blue-500);
   }
@@ -582,6 +591,10 @@
     background-color: var(--color-white);
   }
 
+  .bg-none {
+    background-image: none;
+  }
+
   .p-3 {
     padding: calc(var(--spacing) * 3);
   }
@@ -614,6 +627,10 @@
     padding-block: calc(var(--spacing) * 1);
   }
 
+  .py-2 {
+    padding-block: calc(var(--spacing) * 2);
+  }
+
   .py-2\.5 {
     padding-block: calc(var(--spacing) * 2.5);
   }
@@ -628,6 +645,10 @@
 
   .text-center {
     text-align: center;
+  }
+
+  .text-left {
+    text-align: left;
   }
 
   .font-mono {
@@ -683,6 +704,10 @@
     font-weight: var(--font-weight-semibold);
   }
 
+  .whitespace-pre {
+    white-space: pre;
+  }
+
   .text-blue-600 {
     color: var(--color-blue-600);
   }
@@ -715,6 +740,11 @@
     color: var(--color-yellow-600);
   }
 
+  .shadow-\[0_0_0_3px_rgba\(59\,130\,246\,0\.2\)\] {
+    --tw-shadow: 0 0 0 3px var(--tw-shadow-color, #3b82f633);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+
   .shadow-lg {
     --tw-shadow: 0 10px 15px -3px var(--tw-shadow-color, #0000001a), 0 4px 6px -4px var(--tw-shadow-color, #0000001a);
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -736,9 +766,18 @@
     transition-duration: .2s;
   }
 
+  .outline-none {
+    --tw-outline-style: none;
+    outline-style: none;
+  }
+
   @media (hover: hover) {
     .hover\:bg-blue-700:hover {
       background-color: var(--color-blue-700);
+    }
+
+    .hover\:bg-gray-100:hover {
+      background-color: var(--color-gray-100);
     }
 
     .hover\:text-blue-800:hover {
