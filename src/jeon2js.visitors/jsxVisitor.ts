@@ -4,8 +4,9 @@
  * @param jeon The JEON object containing JSX
  * @param visit The visitor function to process nested elements
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
+ * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
-export function visitJSX(keys: string[], jeon: any, visit: (item: any) => string, jsonImpl?: typeof JSON): string | null {
+export function visitJSX(keys: string[], jeon: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string | null {
     // Handle component structures (<Tag>)
     const componentKey = keys.find(key => key.startsWith('<') && key.endsWith('>'))
     if (componentKey) {

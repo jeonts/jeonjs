@@ -15,11 +15,16 @@ export function ast2jeon(node: acorn.Node, options?: { json?: typeof JSON }): an
     if (visitor) {
         // For visitors that support options, pass them
         // Note: This would require updating all visitor functions to accept options
-        return visitor(node)
+        return visitor(node, options)
     }
 
     // Fallback to the original switch statement for unimplemented visitors
     switch (node.type) {
+        case 'ArrayExpression':
+            return (node as acorn.ArrayExpression).elements
+                .filter(element => element !== null)
+                .map(element => ast2jeon(element!, options))
+
         case 'ExpressionStatement':
             return ast2jeon((node as acorn.ExpressionStatement).expression, options)
 
@@ -99,28 +104,6 @@ export function ast2jeon(node: acorn.Node, options?: { json?: typeof JSON }): an
             return {
                 '.': segments
             }
-
-        case 'ArrayExpression':
-            return (node as acorn.ArrayExpression).elements
-                .filter(element => element !== null)
-                .map(element => ast2jeon(element!, options))
-
-        case 'ObjectExpression':
-            const obj: Record<string, any> = {}
-            let spreadIndex = 0
-            for (const prop of (node as acorn.ObjectExpression).properties) {
-                if (prop.type === 'Property') {
-                    const key = prop.key.type === 'Identifier' ? (prop.key as acorn.Identifier).name : (prop.key as acorn.Literal).value as string
-                    obj[key] = ast2jeon(prop.value, options)
-                } else if (prop.type === 'SpreadElement') {
-                    // Handle spread operator
-                    // For multiple spread elements, we need to create a unique key
-                    const spreadKey = spreadIndex === 0 ? '...' : `...${spreadIndex}`
-                    obj[spreadKey] = ast2jeon((prop as acorn.SpreadElement).argument, options)
-                    spreadIndex++
-                }
-            }
-            return obj
 
         case 'SpreadElement':
             return {

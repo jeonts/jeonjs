@@ -44,7 +44,7 @@ export function visitMethodDefinition(node: acorn.MethodDefinition): any {
     // Convert method body
     // For methods, we need to extract just the function body statements, not the entire function expression
     const methodBody = Array.isArray(node.value.body.body) ?
-        node.value.body.body.map(ast2jeon) :
+        node.value.body.body.map((stmt: acorn.Node) => ast2jeon(stmt)) :
         [ast2jeon(node.value.body.body as unknown as acorn.Node)]
 
     const result = {

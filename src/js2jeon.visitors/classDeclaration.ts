@@ -91,6 +91,11 @@ export function visitClassDeclaration(node: acorn.ClassDeclaration, options?: { 
         }
     }
 
+    // Handle extends clause
+    if (node.superClass) {
+        classMembers['extends'] = ast2jeon(node.superClass, options)
+    }
+
     // For class declarations, return an object with "class ClassName" as the key
     // This matches the pattern used for function declarations
     return {

@@ -15,7 +15,8 @@ export function js2jeon(code: string, options?: { json?: typeof JSON }): any {
         const ast = Parser.parse(code, {
             ecmaVersion: 'latest',
             sourceType: 'module',
-            allowReturnOutsideFunction: true
+            allowReturnOutsideFunction: true,
+            preserveParens: true  // Preserve parentheses in the AST
         })
 
         // Convert AST to JEON
@@ -23,8 +24,9 @@ export function js2jeon(code: string, options?: { json?: typeof JSON }): any {
     } catch (error: any) {
         console.error('Error parsing TypeScript/JavaScript code:', error)
         // Return error message in JEON format instead of null
-        return {
-            "error": `Parsing Error: ${error.message}`
-        }
+        throw error
+        // return {
+        //     "error": `Parsing Error: ${error.message}`   
+        // }
     }
 }

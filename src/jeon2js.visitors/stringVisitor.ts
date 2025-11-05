@@ -4,9 +4,14 @@
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
  */
 export function visitString(jeon: string, jsonImpl?: typeof JSON): string {
-    // Handle references
+    // Handle references - no shortcuts allowed, must use explicit '.' operator
     if (jeon.startsWith('@')) {
-        return jeon.substring(1)
+        const cleanName = jeon.substring(1)
+        // Reject shortcuts like @this.name - must use explicit { '.': ['@this', 'name'] }
+        if (cleanName.includes('.')) {
+            throw new Error(`Invalid reference '${jeon}': member access shortcuts not allowed. Use explicit '.' operator: { ".": ["@${cleanName.split('.')[0]}", ...] }`)
+        }
+        return cleanName
     }
     return (jsonImpl || JSON).stringify(jeon)
 }

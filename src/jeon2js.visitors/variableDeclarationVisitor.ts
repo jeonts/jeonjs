@@ -4,8 +4,9 @@
  * @param operands The operands for the variable declaration
  * @param visit The visitor function to process nested elements
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
+ * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
-export function visitVariableDeclaration(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON): string {
+export function visitVariableDeclaration(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
     // Handle variable declarations and special cases like class declarations
     const declarations = Object.entries(operands).map(([name, value]) => {
         // Determine declaration type

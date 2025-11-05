@@ -12,8 +12,8 @@
     "dev": "vite",
     "preview": "vite preview",
     "example": "tsx src/example.ts",
-    "spcc-test": "tsx src/spccTest.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "example:closure": "tsx src/example-closure.ts",
+    "test": "chk src/test/*.test.ts"
   },
   "keywords": [
     "jeon",

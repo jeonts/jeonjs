@@ -6,7 +6,7 @@ A bidirectional converter between JEON (JSON-based Executable Object Notation) a
 
 ## Demo
 
-Playground: [https://jeonts.github.io/jeonjs](https://jeonts.github.io/jeonjs)
+Playground: [https://jeonts.github.io/jeonjs//](https://jeonts.github.io/jeonjs//)
 
 Repository: [https://github.com/jeonts/jeonjs](https://github.com/jeonts/jeonjs)
 
@@ -31,9 +31,9 @@ pnpm build
 
 ## API Usage
 
-### `jeon2js(jeon: any, options?: { json?: typeof JSON }): string`
+### `jeon2js(jeon: any, options?: { json?: typeof JSON, closure?: boolean }): string`
 
-Converts a JEON object into a JavaScript code string. The optional `options` parameter can be used to specify a JSON implementation (e.g., JSON5).
+Converts a JEON object into a JavaScript code string. The optional `options` parameter can be used to specify a JSON implementation (e.g., JSON5) and enable closure mode for safe evaluation.
 
 **Example: Converting a JEON function to JavaScript**
 
@@ -54,6 +54,50 @@ Output (single line, always visible):
 
 ```
 function(a, b) { return (a + b); }
+```
+
+### Closure Mode for Safe Evaluation
+
+When the `closure` option is set to `true`, function declarations, arrow functions, getters, and setters are wrapped with `evalJeon()` calls for safe evaluation, preventing XSS attacks:
+
+```
+import { jeon2js } from 'jeon';
+
+const jeonFunction = {
+  "function(a, b)": [
+    { "return": { "+": ["@a", "@b"] } }
+  ]
+};
+
+const jsCode = jeon2js(jeonFunction, { closure: true });
+console.log(jsCode);
+```
+
+Output (single line, always visible):
+
+```
+function(a, b) { return evalJeon([{"return":{"+":["@a","@b"]}}], {a, b}); }
+```
+
+For arrow functions with parameters:
+
+```
+import { jeon2js } from 'jeon';
+
+const jeonArrowFunction = {
+  "(x) =>": {
+    "return": { "+": ["Hello World", "@x"] }
+  }
+};
+
+const jsCode = jeon2js(jeonArrowFunction, { closure: true });
+console.log(jsCode);
+```
+
+Output:
+
+```
+(x) => evalJeon({"return":{"+":["Hello World","@x"]}}, {x})
 ```
 
 ### `js2jeon(code: string, options?: { json?: typeof JSON }): any`
@@ -253,9 +297,9 @@ pnpm example
 
 ## API
 
-### `jeon2js(jeon: any): string`
+### `jeon2js(jeon: any, options?: { json?: typeof JSON, closure?: boolean }): string`
 
-Converts a JEON object to JavaScript code.
+Converts a JEON object to JavaScript code. When `closure` is set to `true`, function declarations, arrow functions, getters, and setters are wrapped with `evalJeon()` calls for safe evaluation.
 
 ### `js2jeon(code: string): any`
 

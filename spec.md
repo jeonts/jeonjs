@@ -9,7 +9,7 @@ Every valid JEON structure is a single JSON Object or Array where the key define
 | Concept | Representation | Purpose |
 |---------|----------------|---------|
 | Expression | Object or Array | The fundamental unit of computation. |
-| Reference | String prefixed with @ | Used to refer to defined variables, function parameters, or nested properties using dot notation only (e.g., `@name`, `@event.target.value`, `@x.data.label.color`). |
+| Reference | String prefixed with @ | Used to refer to defined variables or function parameters (e.g., `@name`, `@value`). For member access, use the explicit `.` operator. |
 | Instance Reference | `@this` | Refers to the current object instance within a method or accessor. |
 | Literal | String, Number, Boolean, null | Standard JSON values treated as constants. |
 
@@ -154,20 +154,31 @@ The value is the expression or execution block that the function will execute an
 }
 ```
 
-### C. Global/Scoped Function Call
+### C. Function Execution (Invocation)
 
-The key is the function name followed by `()`, and the value is an array of arguments (expressions or literals). This is used for functions available in the global or local scope (like `log()`, `setAppState()`).
+The concise `()` operator is used to execute a function. The first element is the function reference, followed by arguments.
 
-| JS Construct | Key/Structure | Value | Example (JS: fn(1, 2)) |
-|--------------|---------------|-------|------------------------|
-| `fn(arg1, arg2)` | `{"fn()": [arg1, arg2]}` | Array of arguments | |
+Structure: `{"()": [function_expression, arg1, arg2, ...]}`
 
-#### JEON Example (Matches Selected Text Semantics: `setAppState(x)`):
+- `function_expression`: An expression that resolves to a function object (often using the `.` operator for member access, or `@` for variable reference).
+- `arg1, arg2, ...`: The arguments passed to the function.
+
+**Important**: Shorthand function call syntax like `"functionName()"` is **NOT supported** for security and determinism. Always use the explicit `()` operator with proper function references.
+
+| Type | JS Construct | JEON Structure | Explanation |
+|------|--------------|----------------|-------------|
+| Method Call | `x.list.pop()` | `{"()": [{".": ["@x", "list", "pop"]}]}` | Calls the pop method on x.list |
+| Method on Dynamic Result | `(new Date()).getFullYear()` | `{"()": [{".": [{ "new": ["Date"] }, "getFullYear"]}]}` | Calls getFullYear on a new Date instance |
+| Static Method Call | `Math.sin(val)` | `{"()": [{".": ["@Math", "sin"]}, "@val"]}` | Calls Math.sin with val |
+| Function Variable | `f(arg)` | `{"()": ["@f", "@arg"]}` | Calls function stored in variable f |
+
+#### JEON Example (Invoking a function found via a chain):
 
 ```json
 {
-  "setAppState()": [
-    "@x"
+  "()": [
+    { ".": ["@Math", "floor"] }, 
+    { "()": [{".": ["@app", "getState"]}] }
   ]
 }
 ```
@@ -215,54 +226,36 @@ Structure: `{".": [target_expression, segment1, segment2, ...]}`
 }
 ```
 
-### F. Function Execution (Invocation)
-
-The concise `()` operator is used to execute a function object that has already been retrieved. The first argument must be the function to be called.
-
-Structure for Execution: `{"()": [function_expression, arg1, arg2, ...]}`
-
-- `function_expression`: An expression (often using the `.` operator) that resolves to a function object.
-- `arg1, arg2, ...`: The arguments passed to the function.
-
-| Type | JS Construct | JEON Structure | Method Call | `x.list.pop()` | `{"()": [{".": ["@x", "list", "pop"]}]}` |
-|------|--------------|----------------|-------------|----------------|------------------------------------------|
-| Method on Dynamic Result | `(new Date()).getFullYear()` | `{"()": [{".": [{ "new": ["Date"] }, "getFullYear"]}]}` |
-| Static Method Call | `Math.sin(val)` | `{"()": [{".": ["@Math", "sin"]}, "@val"]}` |
-| Function Variable | `f(arg)` | `{"()": ["@f", "@arg"]}` |
-
-#### JEON Example (Invoking a function found via a chain):
-
-```json
-{
-  "()": [
-    { ".": ["@Math", "floor"] }, 
-    { "getAppState()": [] } 
-  ]
-}
-```
-
-### G. Yield Expressions
+### F. Yield Expressions
 
 Yield expressions are used in generator functions to pause and resume execution, returning a value to the caller.
 
-| JS Construct | Key/Structure | Value | Example (JS: yield value) |
-|--------------|---------------|-------|---------------------------|
-| `yield value` | `{"yield": value}` | Expression to yield | |
-| `yield* value` | `{"yield*": value}` | Expression to delegate to another generator | |
+| JS Construct | Key/Structure | Value | Example (JS: await promise) |
+|--------------|---------------|-------|-----------------------------|
+| `await expression` | `{"await": expression}` | Expression that returns a Promise | |
 
-#### JEON Example (Yield in generator function):
+#### JEON Example (Await in async function):
 
 ```json
 {
-  "function* generator()": [
-    { "yield": 1 },
-    { "yield*": { "otherGenerator()": [] } },
-    { "yield": 3 }
+  "async function fetchData()": [
+    {
+      "@": {
+        "response": {
+          "await": {
+            "()": ["@fetch", "/api/data"]
+          }
+        }
+      }
+    },
+    {
+      "return": "@response"
+    }
   ]
 }
 ```
 
-### H. Await Expressions
+### G. Await Expressions
 
 Await expressions are used in async functions to pause execution until a Promise is resolved.
 
@@ -279,7 +272,7 @@ Await expressions are used in async functions to pause execution until a Promise
       "@": {
         "response": {
           "await": {
-            "fetch()": ["/api/data"]
+            "()": ["@fetch", "/api/data"]
           }
         }
       }
@@ -291,9 +284,7 @@ Await expressions are used in async functions to pause execution until a Promise
 }
 ```
 
-### I. Break Statements
-
-Break statements are used to exit loops or switch statements.
+### H. Break Statements
 
 | JS Construct | Key/Structure | Value | Example (JS: break) |
 |--------------|---------------|-------|---------------------|
@@ -322,8 +313,6 @@ Break statements are used to exit loops or switch statements.
 
 ## 2. Control Flow and Variable Management
 
-### A. Variable Declaration / Assignment
-
 The structure uses the scope type (`@` for `let` declarations, `@@` for `const` declarations) as the key. The value is an object mapping the variable name (without `@` prefix) to its initial expression or value.
 
 | JS Construct | Key/Structure | Value | Example (JS: let a = 1) |
@@ -338,7 +327,7 @@ The structure uses the scope type (`@` for `let` declarations, `@@` for `const` 
   "@": {
     "count": 0,
     "isValid": {
-      "===": ["@data.status", "OK"]
+      "===": [{ ".": ["@data", "status"] }, "OK"]
     }
   },
   "@@": {
@@ -554,7 +543,7 @@ Object accessors can be defined directly within an object literal assignment usi
       "width": 10,
       "height": 5,
       "get area": {
-        "()=>": { "*": ["@this.width", "@this.height"] }
+        "()=>": { "*": [{ ".": ["@this", "width"] }, { ".": ["@this", "height"] }] }
       },
       "set dimensions": {
         "(val)=>": [

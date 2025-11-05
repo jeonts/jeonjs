@@ -13,8 +13,9 @@ import { visitObject } from './objectVisitor'
 import { visitPropertyAccess } from './propertyAccessVisitor'
 import { visitSequencing } from './sequencingVisitor'
 import { visitSwitch } from './switchVisitor'
+import { VisitorRegistry } from './visitorRegistry.types'
 
-export const visitorRegistry = {
+export const visitorRegistry: VisitorRegistry = {
     visitString,
     visitPrimitive,
     visitArray,

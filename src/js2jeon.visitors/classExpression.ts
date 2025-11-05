@@ -2,7 +2,7 @@ import * as acorn from 'acorn'
 import { ast2jeon } from './ast2jeon'
 
 export function visitClassExpression(node: acorn.ClassExpression): any {
-    const className = node.id ? node.id.name : 'AnonymousClass'
+    const className = node.id ? node.id.name : ''
     const classMembers: Record<string, any> = {}
 
     // Process class body
@@ -51,7 +51,7 @@ export function visitClassExpression(node: acorn.ClassExpression): any {
 
                 // Convert method body directly instead of the entire function expression
                 const methodBody = Array.isArray(member.value.body.body) ?
-                    member.value.body.body.map(ast2jeon) :
+                    member.value.body.body.map((stmt: acorn.Node) => ast2jeon(stmt)) :
                     [ast2jeon(member.value.body.body as unknown as acorn.Node)]
 
                 classMembers[methodKey] = methodBody
@@ -70,6 +70,11 @@ export function visitClassExpression(node: acorn.ClassExpression): any {
                 classMembers[propName] = member.value ? ast2jeon(member.value) : null
             }
         }
+    }
+
+    // Handle extends clause
+    if (node.superClass) {
+        classMembers['extends'] = ast2jeon(node.superClass)
     }
 
     // For ClassExpression, return the class object directly

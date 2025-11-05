@@ -20,10 +20,13 @@ export function visitCallExpression(node: acorn.CallExpression, options?: { json
             ]
         }
     } else {
-        // Function call
+        // Function call - use explicit () operator syntax (no sugar)
         const functionName = (node.callee as acorn.Identifier).name
         return {
-            [`${functionName}()`]: node.arguments.map(arg => ast2jeon(arg, options))
+            '()': [
+                `@${functionName}`,
+                ...node.arguments.map(arg => ast2jeon(arg, options))
+            ]
         }
     }
 }

@@ -39,16 +39,10 @@ import { visitJSXExpressionContainer } from './jsxExpressionContainer'
 import { visitYieldExpression } from './yieldExpression'
 import { visitBreakStatement } from './breakStatement'
 import { visitTryStatement } from './tryStatement'
-
-// Create wrapper functions that pass options to visitors
-const createVisitorWrapper = (visitor: (node: any, options?: { json?: typeof JSON }) => any) => {
-    return (node: any, options?: { json?: typeof JSON }) => {
-        return visitor(node, options)
-    }
-}
+import { visitParenthesizedExpression } from './parenthesizedExpression'
 
 export const visitorRegistry: Record<string, (node: any, options?: { json?: typeof JSON }) => any> = {
-    'BinaryExpression': createVisitorWrapper(visitBinaryExpression),
+    'BinaryExpression': (node, options) => visitBinaryExpression(node, options),
     'UnaryExpression': (node, options) => visitUnaryExpression(node, options),
     'Program': (node, options) => visitProgram(node, options),
     'Identifier': (node, options) => visitIdentifier(node, options),
@@ -77,15 +71,16 @@ export const visitorRegistry: Record<string, (node: any, options?: { json?: type
     'ForStatement': (node, options) => visitForStatement(node, options),
     'ReturnStatement': (node, options) => visitReturnStatement(node, options),
     'ClassDeclaration': (node, options) => visitClassDeclaration(node, options),
-    'ClassExpression': (node, options) => visitClassExpression(node, options),
+    'ClassExpression': (node) => visitClassExpression(node),
     'ThisExpression': (node, options) => visitThisExpression(node, options),
-    'MethodDefinition': (node, options) => visitMethodDefinition(node, options),
-    'PropertyDefinition': (node, options) => visitPropertyDefinition(node, options),
+    'MethodDefinition': (node) => visitMethodDefinition(node),
+    'PropertyDefinition': (node) => visitPropertyDefinition(node),
     'AwaitExpression': (node, options) => visitAwaitExpression(node, options),
-    'JSXElement': (node, options) => visitJSXElement(node, options),
-    'JSXText': (node, options) => visitJSXText(node, options),
-    'JSXExpressionContainer': (node, options) => visitJSXExpressionContainer(node, options),
+    'JSXElement': (node) => visitJSXElement(node),
+    'JSXText': (node) => visitJSXText(node),
+    'JSXExpressionContainer': (node) => visitJSXExpressionContainer(node),
     'YieldExpression': (node, options) => visitYieldExpression(node, options),
     'BreakStatement': (node, options) => visitBreakStatement(node, options),
     'TryStatement': (node, options) => visitTryStatement(node, options),
+    'ParenthesizedExpression': (node, options) => visitParenthesizedExpression(node, options),
 }

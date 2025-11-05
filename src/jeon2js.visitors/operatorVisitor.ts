@@ -4,9 +4,22 @@
  * @param operands The operands for the operator
  * @param visit The visitor function to process nested elements
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
+ * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
-export function visitOperator(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON): string {
+export function visitOperator(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
     switch (op) {
+        case '[':
+            // Handle array literals
+            if (Array.isArray(operands)) {
+                const elements = operands.map(operand => visit(operand)).join(', ')
+                return `[${elements}]`
+            }
+            return '[]'
+
+        case '(':
+            // Handle parentheses expressions
+            return `(${visit(operands)})`
+
         case '+':
         case '-':
         case '*':
@@ -25,7 +38,8 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
             if (Array.isArray(operands) && operands.length >= 2) {
                 // Handle multiple operands by chaining binary operations
                 const operandStrings = operands.map(operand => visit(operand))
-                return `(${operandStrings.join(` ${op} `)})`
+                // Don't add extra parentheses for expressions already in parentheses
+                return `${operandStrings.join(` ${op} `)}`
             }
             break
 
@@ -58,6 +72,14 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
             const paramMatch = op.match(/\(([^)]*)\)/)
             const params = paramMatch ? paramMatch[1].split(',').map(p => p.trim()).filter(p => p) : []
             const body = Array.isArray(operands) ? operands.map(stmt => visit(stmt)).join(';\n  ') : visit(operands)
+
+            // If closure mode is enabled, wrap the function in evalJeon
+            if (closure) {
+                // Create a function that calls evalJeon with the body and parameters
+                const contextObj = params.map(p => `${p}: ${p}`).join(', ')
+                return `function(${params.join(', ')}) { return evalJeon(${JSON.stringify(operands)}, {${contextObj}}); }`
+            }
+
             return `function(${params.join(', ')}) {\n  ${body}\n}`
 
         case 'await':

@@ -4,8 +4,9 @@
  * @param operands The operands for the property access
  * @param visit The visitor function to process nested elements
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
+ * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
-export function visitPropertyAccess(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON): string {
+export function visitPropertyAccess(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
     // Handle object property access
     if (op === '.') {
         if (Array.isArray(operands) && operands.length >= 2) {

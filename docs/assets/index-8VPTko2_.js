@@ -2997,7 +2997,19 @@ function visitFunctionDeclaration$1(keys, jeon, visit, jsonImpl) {
   for (const key2 of keys) {
     if (key2.startsWith("function") || key2.startsWith("async function") || key2.startsWith("function*")) {
       const paramMatch = key2.match(/\(([^)]*)\)/);
-      const params = paramMatch ? paramMatch[1].split(",").map((p) => p.trim()).filter((p) => p) : [];
+      if (!paramMatch) {
+        throw new Error(`Invalid function signature: ${key2}`);
+      }
+      const paramStr = paramMatch[1];
+      if (paramStr) {
+        const params2 = paramStr.split(",").map((p) => p.trim()).filter((p) => p);
+        for (const param of params2) {
+          if (!/^[_$a-zA-Z][_$a-zA-Z0-9]*$/.test(param)) {
+            throw new Error(`Invalid parameter name '${param}' in function signature: ${key2}`);
+          }
+        }
+      }
+      const params = paramStr ? paramStr.split(",").map((p) => p.trim()).filter((p) => p) : [];
       const body = jeon[key2];
       const bodyStr = Array.isArray(body) ? body.map((stmt) => visit(stmt)).join(";\n  ") : visit(body);
       return `${key2.split("(")[0]}(${params.join(", ")}) {
@@ -3752,9 +3764,9 @@ function nextLineBreak(code, from, end) {
 }
 var nonASCIIwhitespace = /[\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]/;
 var skipWhiteSpace = /(?:\s|\/\/.*|\/\*[^]*?\*\/)*/g;
-var ref$1 = Object.prototype;
-var hasOwnProperty = ref$1.hasOwnProperty;
-var toString = ref$1.toString;
+var ref = Object.prototype;
+var hasOwnProperty = ref.hasOwnProperty;
+var toString = ref.toString;
 var hasOwn = Object.hasOwn || (function(obj, propName) {
   return hasOwnProperty.call(obj, propName);
 });
@@ -18883,65 +18895,6 @@ function requirePrism() {
 }
 var prismExports = requirePrism();
 const Prism$1 = /* @__PURE__ */ getDefaultExportFromCjs(prismExports);
-var prismTypescript = {};
-var hasRequiredPrismTypescript;
-function requirePrismTypescript() {
-  if (hasRequiredPrismTypescript) return prismTypescript;
-  hasRequiredPrismTypescript = 1;
-  (function(Prism2) {
-    Prism2.languages.typescript = Prism2.languages.extend("javascript", {
-      "class-name": {
-        pattern: /(\b(?:class|extends|implements|instanceof|interface|new|type)\s+)(?!keyof\b)(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?:\s*<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>)?/,
-        lookbehind: true,
-        greedy: true,
-        inside: null
-        // see below
-      },
-      "builtin": /\b(?:Array|Function|Promise|any|boolean|console|never|number|string|symbol|unknown)\b/
-    });
-    Prism2.languages.typescript.keyword.push(
-      /\b(?:abstract|declare|is|keyof|readonly|require)\b/,
-      // keywords that have to be followed by an identifier
-      /\b(?:asserts|infer|interface|module|namespace|type)\b(?=\s*(?:[{_$a-zA-Z\xA0-\uFFFF]|$))/,
-      // This is for `import type *, {}`
-      /\btype\b(?=\s*(?:[\{*]|$))/
-    );
-    delete Prism2.languages.typescript["parameter"];
-    delete Prism2.languages.typescript["literal-property"];
-    var typeInside = Prism2.languages.extend("typescript", {});
-    delete typeInside["class-name"];
-    Prism2.languages.typescript["class-name"].inside = typeInside;
-    Prism2.languages.insertBefore("typescript", "function", {
-      "decorator": {
-        pattern: /@[$\w\xA0-\uFFFF]+/,
-        inside: {
-          "at": {
-            pattern: /^@/,
-            alias: "operator"
-          },
-          "function": /^[\s\S]+/
-        }
-      },
-      "generic-function": {
-        // e.g. foo<T extends "bar" | "baz">( ...
-        pattern: /#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*\s*<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>(?=\s*\()/,
-        greedy: true,
-        inside: {
-          "function": /^#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*/,
-          "generic": {
-            pattern: /<[\s\S]+/,
-            // everything after the first <
-            alias: "class-name",
-            inside: typeInside
-          }
-        }
-      }
-    });
-    Prism2.languages.ts = Prism2.languages.typescript;
-  })(Prism);
-  return prismTypescript;
-}
-requirePrismTypescript();
 Prism.languages.javascript = Prism.languages.extend("clike", {
   "class-name": [
     Prism.languages.clike["class-name"],
@@ -19176,7 +19129,7 @@ style.textContent = customCSS;
 document.head.appendChild(style);
 const App = () => {
   const jeonInput = observable(`{
-  "function(a, b)": [
+  "function add(a, b)": [
     { "return": { "+": ["@a", "@b"] } }
   ]
 }`);
@@ -19189,93 +19142,71 @@ const App = () => {
       Prism$1.highlightAll();
     }, 0);
   };
-  const handleJeonInput = (e) => {
-    const value = e.target.textContent || e.target.innerText;
-    jeonInput(value);
-  };
-  const handleTsInput = (e) => {
-    const value = e.target.textContent || e.target.innerText;
-    tsInput(value);
-  };
-  const updateOutputHighlighting = () => {
-    setTimeout(() => {
-      const tsElement = document.getElementById("ts-output-code");
-      if (tsElement && get(tsOutput)) {
-        try {
-          tsElement.innerHTML = Prism$1.highlight(get(tsOutput), Prism$1.languages.typescript, "typescript");
-        } catch (e) {
-          tsElement.textContent = get(tsOutput);
-        }
-      }
-      const jeonElement = document.getElementById("jeon-output-code");
-      if (jeonElement && get(jeonOutput)) {
-        try {
-          const parsed = JSON.parse(get(jeonOutput));
-          const formatted = JSON.stringify(parsed, null, 2);
-          jeonElement.innerHTML = Prism$1.highlight(formatted, Prism$1.languages.json, "json");
-        } catch {
-          try {
-            jeonElement.innerHTML = Prism$1.highlight(get(jeonOutput), Prism$1.languages.json, "json");
-          } catch (e) {
-            jeonElement.textContent = get(jeonOutput);
-          }
-        }
-      }
-    }, 0);
-  };
-  const convertJeonToTs = () => {
+  const tsElement = observable();
+  effect(() => {
+    const tse = get(tsElement);
+    const tso = get(tsOutput);
+    if (!tse) return;
+    if (!tso) return;
     try {
-      console.log("JSON5:", lib);
-      console.log("typeof JSON5:", typeof lib);
-      console.log("JSON5.stringify:", lib.stringify);
-      console.log("JSON5.parse:", lib.parse);
-      console.log("typeof JSON5.stringify:", typeof lib.stringify);
-      console.log("typeof JSON5.parse:", typeof lib.parse);
-      const JSON5Wrapper = {
-        stringify: lib.stringify,
-        parse: lib.parse,
-        [Symbol.toStringTag]: "JSON"
-      };
-      console.log("JSON5Wrapper created:", JSON5Wrapper);
-      console.log("typeof JSON5Wrapper.parse:", typeof JSON5Wrapper.parse);
-      console.log("typeof JSON5.parse:", typeof lib.parse);
-      const jeon = useJSON5() ? lib.parse(get(jeonInput)) : JSON.parse(get(jeonInput));
+      tse.innerHTML = Prism$1.highlight(tso, Prism$1.languages.javascript, "javascript");
+    } catch (e) {
+      tse.textContent = e;
+    }
+  });
+  const jeonElement = observable();
+  effect(() => {
+    const jse = get(jeonElement);
+    const jso = get(jeonOutput);
+    if (!jse) return;
+    if (!jso) return;
+    try {
+      const parsed = JSON.parse(jso);
+      const formatted = JSON.stringify(parsed, null, 2);
+      jse.innerHTML = Prism$1.highlight(formatted, Prism$1.languages.json, "json");
+    } catch {
+      try {
+        jse.innerHTML = Prism$1.highlight(jso, Prism$1.languages.jeon, "jeon");
+      } catch (e) {
+        jse.textContent = e;
+      }
+    }
+  });
+  const JSON5Wrapper = {
+    stringify: lib.stringify,
+    parse: lib.parse,
+    [Symbol.toStringTag]: "JSON"
+  };
+  const jeonInputRef = observable();
+  const jsInputRef = observable();
+  const convertJeon2js = () => {
+    const jeonInput2 = get(jeonInputRef);
+    if (!jeonInput2) return;
+    const text = jeonInput2.textContent || jeonInput2.innerText;
+    try {
+      const jeon = useJSON5() ? lib.parse(text) : JSON.parse(text);
       const code = jeon2js(jeon, { json: useJSON5() ? JSON5Wrapper : JSON });
       tsOutput(code);
       highlightCodeBlocks();
-      updateOutputHighlighting();
     } catch (error) {
       console.error("convertJeonToTs error:", error);
       tsOutput(`Error: ${error.message}`);
     }
   };
-  const convertTsToJeon = () => {
+  const convertJs2Jeon = () => {
+    const jsInput = get(jsInputRef);
+    if (!jsInput) return;
+    const text = jsInput.textContent || jsInput.innerText;
     try {
-      console.log("JSON5:", lib);
-      console.log("typeof JSON5:", typeof lib);
-      console.log("JSON5.stringify:", lib.stringify);
-      console.log("JSON5.parse:", lib.parse);
-      console.log("typeof JSON5.stringify:", typeof lib.stringify);
-      console.log("typeof JSON5.parse:", typeof lib.parse);
-      const JSON5Wrapper = {
-        stringify: lib.stringify,
-        parse: lib.parse,
-        [Symbol.toStringTag]: "JSON"
-      };
-      console.log("JSON5Wrapper created:", JSON5Wrapper);
-      console.log("typeof JSON5Wrapper.stringify:", typeof JSON5Wrapper.stringify);
-      console.log("typeof JSON5Wrapper.parse:", typeof JSON5Wrapper.parse);
-      const jeon = js2jeon(get(tsInput), { json: useJSON5() ? JSON5Wrapper : JSON });
+      const jeon = js2jeon(text, { json: useJSON5() ? JSON5Wrapper : JSON });
       const formatted = useJSON5() ? JSON5Wrapper.stringify(jeon, null, 2) : JSON.stringify(jeon, null, 2);
       jeonOutput(formatted);
       highlightCodeBlocks();
-      updateOutputHighlighting();
     } catch (error) {
       console.error("convertTsToJeon error:", error);
       jeonOutput(`Error: ${error.message}`);
     }
   };
-  convertJeonToTs();
   const jeonExample1 = '{ "function a(name)": [ { "return": { "+": ["Hello, ", "@name"] } } ] }';
   const tsExample1 = 'function a(name) { return ("Hello, " + name) }';
   const jeonExample2 = '{ "@": { "count": 0, "message": "Hello World" } }';
@@ -19447,9 +19378,15 @@ const App = () => {
   }
 }`;
   const tsExample10 = `let a = {1:2, 2:3, ...{3:3, 4:4}, 5:5};`;
-  return /* @__PURE__ */ jsx$1("div", { class: "max-w-6xl mx-auto p-5 bg-gray-800 text-white", children: /* @__PURE__ */ jsxs("div", { class: "bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800", children: [
+  const ref2 = observable();
+  effect(() => {
+    initCollapsible();
+    convertJeon2js();
+    convertJs2Jeon();
+  });
+  return /* @__PURE__ */ jsx$1("div", { ref: ref2, class: "max-w-6xl mx-auto p-5 bg-gray-800 text-white", children: /* @__PURE__ */ jsxs("div", { class: "bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800", children: [
     /* @__PURE__ */ jsx$1("h1", { class: "text-3xl font-bold text-center text-gray-800 mb-4", children: "JEON Converter Demo" }),
-    /* @__PURE__ */ jsx$1("p", { class: "text-center text-gray-600 mb-8", children: "A bidirectional converter between JEON (JSON-based Executable Object Notation) and TypeScript/JavaScript." }),
+    /* @__PURE__ */ jsx$1("p", { class: "text-center text-gray-600 mb-8", children: "A bidirectional converter between JEON (JSON-based Executable Object Notation) and JavaScript." }),
     /* @__PURE__ */ jsxs("div", { class: "flex items-center mb-4", children: [
       /* @__PURE__ */ jsx$1(
         "input",
@@ -19464,14 +19401,18 @@ const App = () => {
       /* @__PURE__ */ jsx$1("label", { for: "useJSON5", class: "text-gray-700", children: "Use JSON5 (allows comments, trailing commas, etc.)" })
     ] }),
     /* @__PURE__ */ jsxs("div", { class: "flex flex-col md:flex-row gap-6 mb-8", children: [
-      /* @__PURE__ */ jsxs("div", { class: "flex-1 flex flex-col", children: [
-        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-semibold text-gray-800 mb-3", children: "JEON to TypeScript" }),
+      /* @__PURE__ */ jsxs("div", { class: "flex-1 flex flex-col overflow-scroll", children: [
+        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-semibold text-gray-800 mb-3", children: "JEON to JavaScript" }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
-            id: "jeon-input",
+            ref: jeonInputRef,
             contentEditable: true,
-            onInput: handleJeonInput,
+            onPaste: (e) => {
+              e.preventDefault();
+              const text = e.clipboardData?.getData("text/plain") || "";
+              document.execCommand("insertText", false, text);
+            },
             class: "w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y text-gray-800 overflow-auto bg-white editable-div",
             children: get(jeonInput)
           }
@@ -19479,20 +19420,24 @@ const App = () => {
         /* @__PURE__ */ jsx$1(
           "button",
           {
-            onClick: convertJeonToTs,
-            class: "mt-3 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition duration-200",
-            children: "Convert to TypeScript"
+            onClick: convertJeon2js,
+            class: "mt-3 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition duration-200 cursor-pointer",
+            children: "Convert to JavaScript"
           }
         )
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: "flex-1 flex flex-col", children: [
-        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-semibold text-gray-800 mb-3", children: "TypeScript to JEON" }),
+      /* @__PURE__ */ jsxs("div", { class: "flex-1 flex flex-col overflow-scroll", children: [
+        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-semibold text-gray-800 mb-3", children: "JavaScript to JEON" }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
-            id: "ts-input",
+            ref: jsInputRef,
             contentEditable: true,
-            onInput: handleTsInput,
+            onPaste: (e) => {
+              e.preventDefault();
+              const text = e.clipboardData?.getData("text/plain") || "";
+              document.execCommand("insertText", false, text);
+            },
             class: "w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y text-gray-800 overflow-auto bg-white editable-div",
             children: get(tsInput)
           }
@@ -19500,8 +19445,8 @@ const App = () => {
         /* @__PURE__ */ jsx$1(
           "button",
           {
-            onClick: convertTsToJeon,
-            class: "mt-3 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition duration-200",
+            onClick: convertJs2Jeon,
+            class: "mt-3 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition duration-200 cursor-pointer",
             children: "Convert to JEON"
           }
         )
@@ -19509,13 +19454,13 @@ const App = () => {
     ] }),
     /* @__PURE__ */ jsxs("div", { class: "flex flex-col md:flex-row gap-6", children: [
       /* @__PURE__ */ jsxs("div", { class: "flex-1 flex flex-col", children: [
-        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-semibold text-gray-800 mb-3", children: "TypeScript Output" }),
+        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-semibold text-gray-800 mb-3", children: "JavaScript Output" }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
             id: "ts-output",
             class: "w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y bg-gray-50 text-gray-800 overflow-auto output-div",
-            children: /* @__PURE__ */ jsx$1("code", { id: "ts-output-code", children: get(tsOutput) })
+            children: /* @__PURE__ */ jsx$1("code", { ref: tsElement, children: get(tsOutput) })
           }
         )
       ] }),
@@ -19526,7 +19471,7 @@ const App = () => {
           {
             id: "jeon-output",
             class: "w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y bg-gray-50 text-gray-800 overflow-auto output-div",
-            children: /* @__PURE__ */ jsx$1("code", { id: "jeon-output-code", children: get(jeonOutput) })
+            children: /* @__PURE__ */ jsx$1("code", { ref: jeonElement, children: get(jeonOutput) })
           }
         )
       ] })
@@ -19537,22 +19482,22 @@ const App = () => {
         /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-semibold text-blue-600 mb-3", children: "1. Function Declaration" }),
         /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample1 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample1 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample1 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "mb-5 p-5 bg-gray-50 border-l-4 border-blue-500 rounded-r", children: [
         /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-semibold text-blue-600 mb-3", children: "2. Variable Declaration" }),
         /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample2 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample2 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample2 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "mb-5 p-5 bg-gray-50 border-l-4 border-blue-500 rounded-r", children: [
         /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-semibold text-blue-600 mb-3", children: "3. Arrow Function" }),
         /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample3 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample3 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample3 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "mb-5 p-5 bg-gray-50 border-l-4 border-green-500 rounded-r", children: [
         /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-semibold text-green-600 mb-3", children: "4. Generator Function" }),
@@ -19564,8 +19509,8 @@ const App = () => {
           ] }),
           /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample4 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample4 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample4 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "mb-5 p-5 bg-gray-50 border-l-4 border-green-500 rounded-r", children: [
         /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-semibold text-green-600 mb-3", children: "5. Async/Await" }),
@@ -19577,8 +19522,8 @@ const App = () => {
           ] }),
           /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample5 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample5 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample5 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "mb-5 p-5 bg-gray-50 border-l-4 border-green-500 rounded-r", children: [
         /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-semibold text-green-600 mb-3", children: "6. JSX Elements" }),
@@ -19590,8 +19535,8 @@ const App = () => {
           ] }),
           /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample6 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample6 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample6 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "mb-5 p-5 bg-gray-50 border-l-4 border-green-500 rounded-r", children: [
         /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-semibold text-green-600 mb-3", children: "7. Array Spread Operator" }),
@@ -19603,8 +19548,8 @@ const App = () => {
           ] }),
           /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample7 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample7 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample7 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "mb-5 p-5 bg-gray-50 border-l-4 border-purple-500 rounded-r", children: [
         /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-semibold text-purple-600 mb-3", children: "8. Class Declaration" }),
@@ -19616,13 +19561,13 @@ const App = () => {
           ] }),
           /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample8 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn text-blue-600 hover:text-blue-800 font-medium flex items-center", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
-            " Show TypeScript"
+            " Show JavaScript"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample8 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample8 }) }) })
         ] })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "mb-5 p-5 bg-gray-50 border-l-4 border-purple-500 rounded-r", children: [
@@ -19635,13 +19580,13 @@ const App = () => {
           ] }),
           /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample9 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn text-blue-600 hover:text-blue-800 font-medium flex items-center", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
-            " Show TypeScript"
+            " Show JavaScript"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample9 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample9 }) }) })
         ] })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "p-5 bg-gray-50 border-l-4 border-yellow-500 rounded-r", children: [
@@ -19654,8 +19599,8 @@ const App = () => {
           ] }),
           /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample10 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript", children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample10 }) }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample10 }) }),
         /* @__PURE__ */ jsx$1("p", { class: "text-sm text-gray-600 mt-2", children: "Note: This feature requires JSON5 support to be enabled" })
       ] })
     ] })
@@ -19673,8 +19618,8 @@ const initCollapsible = () => {
         icon.textContent = "▲";
         if (textNode.textContent.includes("JEON")) {
           textNode.textContent = " Hide JEON";
-        } else if (textNode.textContent.includes("TypeScript")) {
-          textNode.textContent = " Hide TypeScript";
+        } else if (textNode.textContent.includes("JavaScript")) {
+          textNode.textContent = " Hide JavaScript";
         } else {
           textNode.textContent = " Hide Output";
         }
@@ -19683,8 +19628,8 @@ const initCollapsible = () => {
         icon.textContent = "▼";
         if (textNode.textContent.includes("JEON")) {
           textNode.textContent = " Show JEON";
-        } else if (textNode.textContent.includes("TypeScript")) {
-          textNode.textContent = " Show TypeScript";
+        } else if (textNode.textContent.includes("JavaScript")) {
+          textNode.textContent = " Show JavaScript";
         } else {
           textNode.textContent = " Show Output";
         }
@@ -19692,9 +19637,5 @@ const initCollapsible = () => {
     });
   });
 };
-const ref = observable();
-effect(() => {
-  initCollapsible();
-});
-render(/* @__PURE__ */ jsx$1(App, { ref }), document.getElementById("app"));
-//# sourceMappingURL=index-_lVhwVk1.js.map
+render(/* @__PURE__ */ jsx$1(App, {}), document.getElementById("app"));
+//# sourceMappingURL=index-8VPTko2_.js.map
