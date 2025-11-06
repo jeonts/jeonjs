@@ -150,17 +150,24 @@ const App = () => {
 
   // Function to handle input changes with syntax highlighting
   const handleJeonInput = (e: any) => {
-    const value = e.target.textContent || e.target.innerText
-    jeonInput(value)
+    // Don't update the observable on input to prevent cursor reset
+    // The value will be captured when the convert button is clicked
   }
 
   const handleTsInput = (e: any) => {
-    const value = e.target.textContent || e.target.innerText
-    jsInput(value)
+    // Don't update the observable on input to prevent cursor reset
+    // The value will be captured when the convert button is clicked
   }
 
   const convertJeonToTs = () => {
     try {
+      // Get the current value from the contentEditable div
+      const jeonInputElement = document.getElementById('jeon-input')
+      const currentValue = jeonInputElement ? (jeonInputElement.textContent || jeonInputElement.innerText) : ''
+
+      // Update the observable with the current value
+      jeonInput(currentValue)
+
       console.log('JSON5:', JSON5)
       console.log('typeof JSON5:', typeof JSON5)
       console.log('JSON5.stringify:', JSON5.stringify)
@@ -179,7 +186,7 @@ const App = () => {
       console.log('typeof JSON5Wrapper.parse:', typeof JSON5Wrapper.parse)
       console.log('typeof JSON5.parse:', typeof JSON5.parse)
 
-      const jeon = useJSON5() ? JSON5.parse($$(jeonInput)) : JSON.parse($$(jeonInput))
+      const jeon = useJSON5() ? JSON5.parse(currentValue) : JSON.parse(currentValue)
       // Pass the JSON implementation to jeon2js
       const code = jeon2js(jeon, { json: useJSON5() ? JSON5Wrapper : JSON })
       console.log('Converted TypeScript code:', code)
@@ -192,6 +199,13 @@ const App = () => {
 
   const convertTsToJeon = () => {
     try {
+      // Get the current value from the contentEditable div
+      const tsInputElement = document.getElementById('ts-input')
+      const currentValue = tsInputElement ? (tsInputElement.textContent || tsInputElement.innerText) : ''
+
+      // Update the observable with the current value
+      jsInput(currentValue)
+
       console.log('JSON5:', JSON5)
       console.log('typeof JSON5:', typeof JSON5)
       console.log('JSON5.stringify:', JSON5.stringify)
@@ -211,7 +225,7 @@ const App = () => {
       console.log('typeof JSON5Wrapper.parse:', typeof JSON5Wrapper.parse)
 
       // Auto-wrap JavaScript code to make it parseable
-      let codeToParse = $$(jsInput) as string
+      let codeToParse = currentValue as string
       let originalInput = codeToParse
       let jeon
 
@@ -477,7 +491,7 @@ const App = () => {
               contentEditable
               onInput={handleJeonInput}
               class={editableDiv}
-            >{$$(jeonInput)}</pre>
+            >{jeonInput}</pre>
             <button
               onClick={convertJeonToTs}
               class={primaryButton}
@@ -493,7 +507,7 @@ const App = () => {
               contentEditable
               onInput={handleTsInput}
               class={editableDiv}
-            >{$$(jsInput)}</pre>
+            >{jsInput}</pre>
             <button
               onClick={convertTsToJeon}
               class={primaryButton}
@@ -669,7 +683,7 @@ const App = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   )
 }
 
