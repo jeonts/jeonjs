@@ -1,8 +1,9 @@
 import './index.css'
-import { $, $$, render, useEffect, type JSX } from 'woby'
+import { $, $$, render, useEffect, type JSX, If } from 'woby'  // Add If to the import
 import * as React from 'woby'
 import { jeon2js } from './jeon2js'
 import { js2jeon } from './js2jeon'
+import { evalJeon } from './safeEval'
 import JSON5 from 'json5'
 // Import PrismJS for syntax highlighting
 import * as Prism from 'prismjs'
@@ -25,7 +26,9 @@ const App = () => {
   const jsOutput = $('')
   const jeonOutput = $('')
   const useJSON5 = $(false)
-  const useClosure = $(false) // Add closure option
+  const useClosure = $(false)
+  const evalResult = $('')
+  const evalContext = $('{}') // Add context for evalJeon
 
   // Create observable refs for the contentEditable divs
   const jeonInputRef = $<HTMLPreElement | null>(null)
@@ -503,6 +506,47 @@ const App = () => {
     <path d="M6 3H16C16.5523 3 17 2.55228 17 2C17 1.44772 16.5523 1 16 1H6C4.34315 1 3 2.34315 3 4V18C3 18.5523 3.44772 19 4 19C4.55228 19 5 18.5523 5 18V4C5 3.44772 5.44772 3 6 3Z" fill="#0F0F0F" />
   </svg>
 
+  // Add function to evaluate JavaScript output using evalJeon
+  const evaluateJsOutput = () => {
+    try {
+      // Get the current JavaScript output
+      const jsCode = $$(jsOutput)
+      if (!jsCode || jsCode.startsWith('Error:')) {
+        evalResult('Error: No valid JavaScript output to evaluate')
+        return
+      }
+
+      // Parse the JEON from the original input to get the structure
+      const refElement = $$(jeonInputRef)
+      const jeonText = refElement ? (refElement.textContent || refElement.innerText) : ''
+
+      if (!jeonText) {
+        evalResult('Error: No JEON input found')
+        return
+      }
+
+      const jeon = useJSON5() ? JSON5.parse(jeonText) : JSON.parse(jeonText)
+
+      // Parse the context JSON
+      let context = {}
+      try {
+        const contextText = $$(evalContext)
+        // Use JSON5 or standard JSON based on the useJSON5 flag
+        context = contextText ? (useJSON5() ? JSON5.parse(contextText) : JSON.parse(contextText)) : {}
+      } catch (contextError) {
+        evalResult('Error: Invalid context JSON')
+        return
+      }
+
+      // Evaluate using evalJeon with context
+      const result = evalJeon(jeon, context)
+      evalResult(JSON.stringify(result, null, 2))
+    } catch (error: any) {
+      console.error('evalJeon error:', error)
+      evalResult(`Error: ${error.message}`)
+    }
+  }
+
   return (
     <div class="max-w-6xl mx-auto p-5 bg-gray-800 text-white">
       <div class="bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800">
@@ -635,6 +679,33 @@ const App = () => {
             >
               <code ref={tsOutputCodeRef} id="ts-output-code"></code>
             </pre>
+            // Add evalJeon button that only shows when closure is checked
+            <If when={() => $$(useClosure)}>
+              <button
+                onClick={evaluateJsOutput}
+                class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded mt-2 hover:bg-green-600 transition-colors"
+              >
+                Evaluate with evalJeon
+              </button>
+              // Add context input box
+              <div class="mt-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Evaluation Context (JSON):
+                </label>
+                <textarea
+                  value={evalContext}
+                  onInput={(e: any) => evalContext(e.target.value)}
+                  class="w-full h-24 font-mono text-sm p-2 border border-gray-300 rounded-md bg-gray-50 text-gray-800"
+                  placeholder='{"variableName": "value", "anotherVar": 42}'
+                />
+              </div>
+              // Add eval result display
+              <pre
+                class="w-full h-32 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-100 text-gray-800 overflow-auto mt-2"
+              >
+                {evalResult}
+              </pre>
+            </If>
           </div>
 
           <div class="w-full lg:w-1/2 relative">
