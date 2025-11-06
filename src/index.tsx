@@ -163,6 +163,57 @@ const App = () => {
     // The value will be captured when the convert button is clicked
   }
 
+  // Function to handle paste events and prevent nested pre elements
+  const handleJeonPaste = (e: ClipboardEvent) => {
+    e.preventDefault()
+    const text = e.clipboardData?.getData('text/plain') || ''
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      range.insertNode(document.createTextNode(text))
+      selection.removeAllRanges()
+      selection.selectAllChildren(range.startContainer)
+    }
+  }
+
+  const handleTsPaste = (e: ClipboardEvent) => {
+    e.preventDefault()
+    const text = e.clipboardData?.getData('text/plain') || ''
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      range.insertNode(document.createTextNode(text))
+      selection.removeAllRanges()
+      selection.selectAllChildren(range.startContainer)
+    }
+  }
+
+  // Add useEffect to attach paste event listeners
+  useEffect(() => {
+    const jeonElement = $$(jeonInputRef)
+    const jsElement = $$(jsInputRef)
+
+    if (jeonElement) {
+      jeonElement.addEventListener('paste', handleJeonPaste as EventListener)
+    }
+
+    if (jsElement) {
+      jsElement.addEventListener('paste', handleTsPaste as EventListener)
+    }
+
+    // Cleanup event listeners
+    return () => {
+      if (jeonElement) {
+        jeonElement.removeEventListener('paste', handleJeonPaste as EventListener)
+      }
+      if (jsElement) {
+        jsElement.removeEventListener('paste', handleTsPaste as EventListener)
+      }
+    }
+  })
+
   const convertJeonToTs = () => {
     try {
       // Get the current value from the contentEditable div using observable ref
