@@ -17,11 +17,11 @@ test('SPCC Test', () => {
 
         console.log('JEON:')
         console.log(JSON.stringify(traditionalFunction, null, 2))
-        console.log('\nConverted to TypeScript:')
+        console.log('\nConverted to JavaScript:')
         const result1 = jeon2js(traditionalFunction)
         console.log(result1)
         console.log('\n' + '='.repeat(50) + '\n')
-        
+
         expect(traditionalFunction).toBeDefined()
         expect(result1).toBeDefined()
     })
@@ -35,11 +35,11 @@ test('SPCC Test', () => {
 
         console.log('JEON:')
         console.log(JSON.stringify(arrowFunction, null, 2))
-        console.log('\nConverted to TypeScript:')
+        console.log('\nConverted to JavaScript:')
         const result2 = jeon2js(arrowFunction)
         console.log(result2)
         console.log('\n' + '='.repeat(50) + '\n')
-        
+
         expect(arrowFunction).toBeDefined()
         expect(result2).toBeDefined()
     })
@@ -58,11 +58,11 @@ test('SPCC Test', () => {
 
         console.log('JEON:')
         console.log(JSON.stringify(variableDeclaration, null, 2))
-        console.log('\nConverted to TypeScript:')
+        console.log('\nConverted to JavaScript:')
         const result3 = jeon2js(variableDeclaration)
         console.log(result3)
         console.log('\n' + '='.repeat(50) + '\n')
-        
+
         expect(variableDeclaration).toBeDefined()
         expect(result3).toBeDefined()
     })
@@ -78,11 +78,11 @@ test('SPCC Test', () => {
 
         console.log('JEON:')
         console.log(JSON.stringify(functionCall, null, 2))
-        console.log('\nConverted to TypeScript:')
+        console.log('\nConverted to JavaScript:')
         const result4 = jeon2js(functionCall)
         console.log(result4)
         console.log('\n' + '='.repeat(50) + '\n')
-        
+
         expect(functionCall).toBeDefined()
         expect(result4).toBeDefined()
     })
@@ -96,11 +96,11 @@ test('SPCC Test', () => {
 
         console.log('JEON:')
         console.log(JSON.stringify(constructorCall, null, 2))
-        console.log('\nConverted to TypeScript:')
+        console.log('\nConverted to JavaScript:')
         const result5 = jeon2js(constructorCall)
         console.log(result5)
         console.log('\n' + '='.repeat(50) + '\n')
-        
+
         expect(constructorCall).toBeDefined()
         expect(result5).toBeDefined()
     })
@@ -117,11 +117,11 @@ test('SPCC Test', () => {
 
         console.log('JEON:')
         console.log(JSON.stringify(memberAccess, null, 2))
-        console.log('\nConverted to TypeScript:')
+        console.log('\nConverted to JavaScript:')
         const result6 = jeon2js(memberAccess)
         console.log(result6)
         console.log('\n' + '='.repeat(50) + '\n')
-        
+
         expect(memberAccess).toBeDefined()
         expect(result6).toBeDefined()
     })
@@ -138,11 +138,11 @@ test('SPCC Test', () => {
 
         console.log('JEON:')
         console.log(JSON.stringify(functionExecution, null, 2))
-        console.log('\nConverted to TypeScript:')
+        console.log('\nConverted to JavaScript:')
         const result7 = jeon2js(functionExecution)
         console.log(result7)
         console.log('\n' + '='.repeat(50) + '\n')
-        
+
         expect(functionExecution).toBeDefined()
         expect(result7).toBeDefined()
     })

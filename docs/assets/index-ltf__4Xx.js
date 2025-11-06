@@ -1815,8 +1815,8 @@ const resolveStyle = (styles, resolved = {}) => {
   } else if (isFunction(styles)) {
     return resolveStyle(styles(), resolved);
   } else if (isArray$2(styles)) {
-    styles.forEach((style2) => {
-      resolveStyle(style2, resolved);
+    styles.forEach((style) => {
+      resolveStyle(style, resolved);
     });
   } else if (styles) {
     for (const key2 in styles) {
@@ -16462,7 +16462,7 @@ function js2jeon(code, options2) {
     });
     return ast2jeon(ast, options2);
   } catch (error) {
-    console.error("Error parsing TypeScript/JavaScript code:", error);
+    console.error("Error parsing JavaScript/JavaScript code:", error);
     throw error;
   }
 }
@@ -18013,10 +18013,10 @@ function requirePrism() {
          * @memberof Prism
          * @public
          */
-        highlightAllUnder: function(container2, async, callback) {
+        highlightAllUnder: function(container, async, callback) {
           var env = {
             callback,
-            container: container2,
+            container,
             selector: 'code[class*="language-"], [class*="language-"] code, code[class*="lang-"], [class*="lang-"] code'
           };
           _.hooks.run("before-highlightall", env);
@@ -18989,8 +18989,8 @@ function requirePrism() {
          *
          * @param {ParentNode} [container=document]
          */
-        highlight: function highlight(container2) {
-          var elements = (container2 || document).querySelectorAll(SELECTOR);
+        highlight: function highlight(container) {
+          var elements = (container || document).querySelectorAll(SELECTOR);
           for (var i = 0, element; element = elements[i++]; ) {
             Prism2.highlightElement(element);
           }
@@ -19010,65 +19010,6 @@ function requirePrism() {
 }
 var prismExports = requirePrism();
 const Prism$1 = /* @__PURE__ */ getDefaultExportFromCjs(prismExports);
-var prismTypescript = {};
-var hasRequiredPrismTypescript;
-function requirePrismTypescript() {
-  if (hasRequiredPrismTypescript) return prismTypescript;
-  hasRequiredPrismTypescript = 1;
-  (function(Prism2) {
-    Prism2.languages.typescript = Prism2.languages.extend("javascript", {
-      "class-name": {
-        pattern: /(\b(?:class|extends|implements|instanceof|interface|new|type)\s+)(?!keyof\b)(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?:\s*<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>)?/,
-        lookbehind: true,
-        greedy: true,
-        inside: null
-        // see below
-      },
-      "builtin": /\b(?:Array|Function|Promise|any|boolean|console|never|number|string|symbol|unknown)\b/
-    });
-    Prism2.languages.typescript.keyword.push(
-      /\b(?:abstract|declare|is|keyof|readonly|require)\b/,
-      // keywords that have to be followed by an identifier
-      /\b(?:asserts|infer|interface|module|namespace|type)\b(?=\s*(?:[{_$a-zA-Z\xA0-\uFFFF]|$))/,
-      // This is for `import type *, {}`
-      /\btype\b(?=\s*(?:[\{*]|$))/
-    );
-    delete Prism2.languages.typescript["parameter"];
-    delete Prism2.languages.typescript["literal-property"];
-    var typeInside = Prism2.languages.extend("typescript", {});
-    delete typeInside["class-name"];
-    Prism2.languages.typescript["class-name"].inside = typeInside;
-    Prism2.languages.insertBefore("typescript", "function", {
-      "decorator": {
-        pattern: /@[$\w\xA0-\uFFFF]+/,
-        inside: {
-          "at": {
-            pattern: /^@/,
-            alias: "operator"
-          },
-          "function": /^[\s\S]+/
-        }
-      },
-      "generic-function": {
-        // e.g. foo<T extends "bar" | "baz">( ...
-        pattern: /#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*\s*<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>(?=\s*\()/,
-        greedy: true,
-        inside: {
-          "function": /^#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*/,
-          "generic": {
-            pattern: /<[\s\S]+/,
-            // everything after the first <
-            alias: "class-name",
-            inside: typeInside
-          }
-        }
-      }
-    });
-    Prism2.languages.ts = Prism2.languages.typescript;
-  })(Prism);
-  return prismTypescript;
-}
-requirePrismTypescript();
 Prism.languages.javascript = Prism.languages.extend("clike", {
   "class-name": [
     Prism.languages.clike["class-name"],
@@ -19234,57 +19175,6 @@ Prism.languages.json = {
   }
 };
 Prism.languages.webmanifest = Prism.languages.json;
-const customCSS = `
-.collapsible-code {
-    margin: 1rem 0;
-}
-
-.collapsible-content {
-    margin-top: 0.5rem;
-}
-
-.collapsible-content.show {
-    display: block;
-}
-
-.collapsible-content.hidden {
-    display: none;
-}
-`;
-const outputDiv = "border border-gray-300 rounded-md p-3 bg-gray-50 overflow-auto resize-y min-h-[200px] font-mono text-sm whitespace-pre";
-const container = "max-w-6xl mx-auto p-5 bg-gray-800 text-white";
-const mainCard = "bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800";
-const title = "text-3xl font-bold text-center text-gray-800 mb-4";
-const subtitle = "text-center text-gray-600 mb-8";
-const checkboxContainer = "flex items-center mb-4";
-const checkbox = "mr-2";
-const checkboxLabel = "text-gray-700";
-const inputSection = "flex flex-col md:flex-row gap-6 mb-8";
-const inputColumn = "flex-1 flex flex-col";
-const sectionTitle = "text-xl font-semibold text-gray-800 mb-3";
-const editableDiv = "w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y text-gray-800 overflow-auto bg-white editable-div";
-const primaryButton = "mt-3 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition duration-200";
-const outputSection = "flex flex-col md:flex-row gap-6";
-const exampleSection = "mt-10";
-const exampleTitle = "text-2xl font-bold text-gray-800 mb-5";
-const exampleCard = "mb-5 p-5 bg-gray-50 border-l-4 border-blue-500 rounded-r";
-const exampleCardGreen = "mb-5 p-5 bg-gray-50 border-l-4 border-green-500 rounded-r";
-const exampleCardPurple = "mb-5 p-5 bg-gray-50 border-l-4 border-purple-500 rounded-r";
-const exampleCardYellow = "p-5 bg-gray-50 border-l-4 border-yellow-500 rounded-r";
-const exampleSubtitle = "text-lg font-semibold text-blue-600 mb-3";
-const exampleSubtitleGreen = "text-lg font-semibold text-green-600 mb-3";
-const exampleSubtitlePurple = "text-lg font-semibold text-purple-600 mb-3";
-const exampleSubtitleYellow = "text-lg font-semibold text-yellow-600 mb-3";
-const fontMediumMb2 = "font-medium mb-2";
-const preCodeBlock = "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json";
-const preCodeBlockTs = "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript";
-const collapsibleCode = "collapsible-code";
-const collapsibleContent = "collapsible-content hidden";
-const smallText = "text-sm text-gray-600 mt-2";
-const collapsibleBtn = "background-none border-none py-2 px-4 cursor-pointer text-left w-full rounded-lg";
-const style = document.createElement("style");
-style.textContent = customCSS;
-document.head.appendChild(style);
 const App = () => {
   const jeonInput = observable(`{
   "function(a, b)": [
@@ -19295,6 +19185,11 @@ const App = () => {
   const jsOutput = observable("");
   const jeonOutput = observable("");
   const useJSON5 = observable(false);
+  const useClosure = observable(false);
+  const jeonInputRef = observable(null);
+  const jsInputRef = observable(null);
+  const tsOutputCodeRef = observable(null);
+  const jeonOutputCodeRef = observable(null);
   const highlightedJsOutput = observable("");
   const highlightedJeonOutput = observable("");
   effect(() => {
@@ -19303,7 +19198,7 @@ const App = () => {
       console.log("Updating JS output highlight, content:", content);
       if (content) {
         try {
-          const highlighted = Prism$1.highlight(content, Prism$1.languages.typescript, "typescript");
+          const highlighted = Prism$1.highlight(content, Prism$1.languages.JavaScript, "JavaScript");
           console.log("Highlighted JS output:", highlighted);
           highlightedJsOutput(highlighted);
         } catch (e) {
@@ -19337,16 +19232,68 @@ const App = () => {
     };
     updateHighlightedJeonOutput();
   });
+  effect(() => {
+    const tsOutputElement = get(tsOutputCodeRef);
+    if (tsOutputElement) {
+      tsOutputElement.innerHTML = get(highlightedJsOutput);
+    }
+  });
+  effect(() => {
+    const jeonOutputElement = get(jeonOutputCodeRef);
+    if (jeonOutputElement) {
+      jeonOutputElement.innerHTML = get(highlightedJeonOutput);
+    }
+  });
+  const handleJeonPaste = (e) => {
+    e.preventDefault();
+    const text = e.clipboardData?.getData("text/plain") || "";
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(text));
+      selection.removeAllRanges();
+      selection.selectAllChildren(range.startContainer);
+    }
+  };
+  const handleTsPaste = (e) => {
+    e.preventDefault();
+    const text = e.clipboardData?.getData("text/plain") || "";
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(text));
+      selection.removeAllRanges();
+      selection.selectAllChildren(range.startContainer);
+    }
+  };
   const handleJeonInput = (e) => {
-    const value = e.target.textContent || e.target.innerText;
-    jeonInput(value);
   };
   const handleTsInput = (e) => {
-    const value = e.target.textContent || e.target.innerText;
-    jsInput(value);
   };
-  const convertJeonToTs = () => {
+  effect(() => {
+    const jeonElement = get(jeonInputRef);
+    const jsElement = get(jsInputRef);
+    if (jeonElement) {
+      jeonElement.addEventListener("paste", handleJeonPaste);
+    }
+    if (jsElement) {
+      jsElement.addEventListener("paste", handleTsPaste);
+    }
+    return () => {
+      if (jeonElement) {
+        jeonElement.removeEventListener("paste", handleJeonPaste);
+      }
+      if (jsElement) {
+        jsElement.removeEventListener("paste", handleTsPaste);
+      }
+    };
+  });
+  const convertJeonToJs = () => {
     try {
+      const refElement = get(jeonInputRef);
+      const currentValue = refElement ? refElement.textContent || refElement.innerText : "";
       console.log("JSON5:", lib);
       console.log("typeof JSON5:", typeof lib);
       console.log("JSON5.stringify:", lib.stringify);
@@ -19361,17 +19308,19 @@ const App = () => {
       console.log("JSON5Wrapper created:", JSON5Wrapper);
       console.log("typeof JSON5Wrapper.parse:", typeof JSON5Wrapper.parse);
       console.log("typeof JSON5.parse:", typeof lib.parse);
-      const jeon = useJSON5() ? lib.parse(get(jeonInput)) : JSON.parse(get(jeonInput));
-      const code = jeon2js(jeon, { json: useJSON5() ? JSON5Wrapper : JSON });
-      console.log("Converted TypeScript code:", code);
+      const jeon = useJSON5() ? lib.parse(currentValue) : JSON.parse(currentValue);
+      const code = jeon2js(jeon, { json: useJSON5() ? JSON5Wrapper : JSON, closure: useClosure() });
+      console.log("Converted JavaScript code:", code);
       jsOutput(code);
     } catch (error) {
       console.error("convertJeonToTs error:", error);
       jsOutput(`Error: ${error.message}`);
     }
   };
-  const convertTsToJeon = () => {
+  const convertJsToJeon = () => {
     try {
+      const refElement = get(jsInputRef);
+      const currentValue = refElement ? refElement.textContent || refElement.innerText : "";
       console.log("JSON5:", lib);
       console.log("typeof JSON5:", typeof lib);
       console.log("JSON5.stringify:", lib.stringify);
@@ -19386,7 +19335,35 @@ const App = () => {
       console.log("JSON5Wrapper created:", JSON5Wrapper);
       console.log("typeof JSON5Wrapper.stringify:", typeof JSON5Wrapper.stringify);
       console.log("typeof JSON5Wrapper.parse:", typeof JSON5Wrapper.parse);
-      const jeon = js2jeon(get(jsInput), { json: useJSON5() ? JSON5Wrapper : JSON });
+      let codeToParse = currentValue;
+      let originalInput = codeToParse;
+      let jeon;
+      try {
+        jeon = js2jeon(codeToParse, { json: useJSON5() ? JSON5Wrapper : JSON });
+        if (jeon === "[LabeledStatement]") {
+          throw new Error("Parsed as labeled statement, trying with parentheses");
+        }
+      } catch (parseError) {
+        try {
+          const wrappedCode = `(${codeToParse})`;
+          const wrappedJeon = js2jeon(wrappedCode, { json: useJSON5() ? JSON5Wrapper : JSON });
+          if (wrappedJeon !== "[LabeledStatement]") {
+            jeon = wrappedJeon;
+            jsInput(wrappedCode);
+            if (refElement) {
+              refElement.textContent = wrappedCode;
+            }
+          } else {
+            jeon = "[LabeledStatement]";
+          }
+        } catch (wrappedError) {
+          if (parseError.message === "Parsed as labeled statement, trying with parentheses") {
+            jeon = "[LabeledStatement]";
+          } else {
+            throw parseError;
+          }
+        }
+      }
       const formatted = useJSON5() ? JSON5Wrapper.stringify(jeon, null, 2) : JSON.stringify(jeon, null, 2);
       console.log("Converted JEON:", formatted);
       jeonOutput(formatted);
@@ -19397,7 +19374,8 @@ const App = () => {
     }
   };
   effect(() => {
-    convertJeonToTs();
+    convertJeonToJs();
+    convertJsToJeon();
   });
   const jeonExample1 = '{ "function a(name)": [ { "return": { "+": ["Hello, ", "@name"] } } ] }';
   const tsExample1 = 'function a(name) { return ("Hello, " + name) }';
@@ -19570,10 +19548,10 @@ const App = () => {
   }
 }`;
   const tsExample10 = `let a = {1:2, 2:3, ...{3:3, 4:4}, 5:5};`;
-  return /* @__PURE__ */ jsx$1("div", { class: container, children: /* @__PURE__ */ jsxs("div", { class: mainCard, children: [
-    /* @__PURE__ */ jsx$1("h1", { class: title, children: "JEON Converter Demo" }),
-    /* @__PURE__ */ jsx$1("p", { class: subtitle, children: "A bidirectional converter between JEON (JSON-based Executable Object Notation) and TypeScript/JavaScript." }),
-    /* @__PURE__ */ jsxs("div", { class: checkboxContainer, children: [
+  return /* @__PURE__ */ jsx$1("div", { class: "max-w-6xl mx-auto p-5 bg-gray-800 text-white", children: /* @__PURE__ */ jsxs("div", { class: "bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800", children: [
+    /* @__PURE__ */ jsx$1("h1", { class: "text-3xl font-bold text-center text-gray-800 mb-4", children: "JEON Converter Demo" }),
+    /* @__PURE__ */ jsx$1("p", { class: "text-center text-gray-600 mb-8", children: "A bidirectional converter between JEON (JSON-based Executable Object Notation) and JavaScript/JavaScript." }),
+    /* @__PURE__ */ jsxs("div", { class: "flex items-center justify-left mb-4", children: [
       /* @__PURE__ */ jsx$1(
         "input",
         {
@@ -19581,211 +19559,224 @@ const App = () => {
           id: "useJSON5",
           checked: useJSON5(),
           onChange: (e) => useJSON5(e.target.checked),
-          class: checkbox
+          class: "mr-2"
         }
       ),
-      /* @__PURE__ */ jsx$1("label", { for: "useJSON5", class: checkboxLabel, children: "Use JSON5 (allows comments, trailing commas, etc.)" })
+      /* @__PURE__ */ jsx$1("label", { for: "useJSON5", class: "text-gray-600", children: "Use JSON5 (allows comments, trailing commas, etc.)" })
     ] }),
-    /* @__PURE__ */ jsxs("div", { class: inputSection, children: [
-      /* @__PURE__ */ jsxs("div", { class: inputColumn, children: [
-        /* @__PURE__ */ jsx$1("h2", { class: sectionTitle, children: "JEON to TypeScript" }),
+    /* @__PURE__ */ jsxs("div", { class: "flex items-center justify-left mb-4", children: [
+      /* @__PURE__ */ jsx$1(
+        "input",
+        {
+          type: "checkbox",
+          id: "useClosure",
+          checked: useClosure(),
+          onChange: (e) => useClosure(e.target.checked),
+          class: "mr-2"
+        }
+      ),
+      /* @__PURE__ */ jsx$1("label", { for: "useClosure", class: "text-gray-600", children: "Use Closure (enables safe evaluation)" })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { class: "flex flex-col lg:flex-row justify-center mb-4 gap-4", children: [
+      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2", children: [
+        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-2", children: "JEON to JavaScript" }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
-            id: "jeon-input",
+            ref: jeonInputRef,
             contentEditable: true,
             onInput: handleJeonInput,
-            class: editableDiv,
-            children: get(jeonInput)
+            class: "w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto",
+            children: jeonInput
           }
         ),
         /* @__PURE__ */ jsx$1(
           "button",
           {
-            onClick: convertJeonToTs,
-            class: primaryButton,
-            children: "Convert to TypeScript"
+            onClick: convertJeonToJs,
+            class: "w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-2 hover:bg-blue-600 transition-colors",
+            children: "Convert to JavaScript"
           }
         )
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: inputColumn, children: [
-        /* @__PURE__ */ jsx$1("h2", { class: sectionTitle, children: "TypeScript to JEON" }),
+      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2", children: [
+        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-2", children: "JavaScript to JEON" }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
-            id: "ts-input",
+            ref: jsInputRef,
             contentEditable: true,
             onInput: handleTsInput,
-            class: editableDiv,
-            children: get(jsInput)
+            class: "w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto",
+            children: jsInput
           }
         ),
         /* @__PURE__ */ jsx$1(
           "button",
           {
-            onClick: convertTsToJeon,
-            class: primaryButton,
+            onClick: convertJsToJeon,
+            class: "w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-2 hover:bg-blue-600 transition-colors",
             children: "Convert to JEON"
           }
         )
       ] })
     ] }),
-    /* @__PURE__ */ jsxs("div", { class: outputSection, children: [
-      /* @__PURE__ */ jsxs("div", { class: inputColumn, children: [
-        /* @__PURE__ */ jsx$1("h2", { class: sectionTitle, children: "TypeScript Output" }),
+    /* @__PURE__ */ jsxs("div", { class: "flex flex-col lg:flex-row justify-center mb-4 gap-4", children: [
+      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2", children: [
+        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-2", children: "JavaScript Output" }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
             id: "ts-output",
-            class: ["w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y bg-gray-50 text-gray-800 overflow-auto", outputDiv],
-            children: /* @__PURE__ */ jsx$1("code", { id: "ts-output-code", dangerouslySetInnerHTML: { __html: highlightedJsOutput } })
+            class: "w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto",
+            children: /* @__PURE__ */ jsx$1("code", { ref: tsOutputCodeRef, id: "ts-output-code" })
           }
         )
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: inputColumn, children: [
-        /* @__PURE__ */ jsx$1("h2", { class: sectionTitle, children: "JEON Output" }),
+      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2", children: [
+        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-2", children: "JEON Output" }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
             id: "jeon-output",
-            class: ["w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y bg-gray-50 text-gray-800 overflow-auto", outputDiv],
-            children: /* @__PURE__ */ jsx$1("code", { id: "jeon-output-code", dangerouslySetInnerHTML: { __html: highlightedJeonOutput } })
+            class: "w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto",
+            children: /* @__PURE__ */ jsx$1("code", { ref: jeonOutputCodeRef, id: "jeon-output-code" })
           }
         )
       ] })
     ] }),
-    /* @__PURE__ */ jsxs("div", { class: exampleSection, children: [
-      /* @__PURE__ */ jsx$1("h2", { class: exampleTitle, children: "Example Conversions" }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCard, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitle, children: "1. Function Declaration" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample1 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample1 }) })
+    /* @__PURE__ */ jsxs("div", { class: "mb-4", children: [
+      /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-4", children: "Example Conversions" }),
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "1. Function Declaration" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample1 }) }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample1 }) })
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCard, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitle, children: "2. Variable Declaration" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample2 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample2 }) })
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "2. Variable Declaration" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample2 }) }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample2 }) })
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCard, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitle, children: "3. Arrow Function" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample3 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample3 }) })
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "3. Arrow Function" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample3 }) }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample3 }) })
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCardGreen, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitleGreen, children: "4. Generator Function" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsxs("div", { class: collapsibleCode, children: [
-          /* @__PURE__ */ jsxs("button", { class: collapsibleBtn, children: [
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "4. Generator Function" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: collapsibleContent, children: /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample4 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample4 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample4 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample4 }) })
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCardGreen, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitleGreen, children: "5. Async/Await" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsxs("div", { class: collapsibleCode, children: [
-          /* @__PURE__ */ jsxs("button", { class: collapsibleBtn, children: [
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "5. Async/Await" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: collapsibleContent, children: /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample5 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample5 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample5 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample5 }) })
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCardGreen, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitleGreen, children: "6. JSX Elements" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsxs("div", { class: collapsibleCode, children: [
-          /* @__PURE__ */ jsxs("button", { class: collapsibleBtn, children: [
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "6. JSX Elements" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: collapsibleContent, children: /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample6 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample6 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample6 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample6 }) })
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCardGreen, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitleGreen, children: "7. Array Spread Operator" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsxs("div", { class: collapsibleCode, children: [
-          /* @__PURE__ */ jsxs("button", { class: collapsibleBtn, children: [
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "7. Array Spread Operator" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: collapsibleContent, children: /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample7 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample7 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample7 }) })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample7 }) })
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCardPurple, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitlePurple, children: "8. Class Declaration" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsxs("div", { class: collapsibleCode, children: [
-          /* @__PURE__ */ jsxs("button", { class: collapsibleBtn, children: [
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "8. Class Declaration" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: collapsibleContent, children: /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample8 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample8 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsxs("div", { class: collapsibleCode, children: [
-          /* @__PURE__ */ jsxs("button", { class: collapsibleBtn, children: [
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
-            " Show TypeScript"
+            " Show JavaScript"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: collapsibleContent, children: /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample8 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample8 }) }) })
         ] })
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCardPurple, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitlePurple, children: "9. Assigned Class" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsxs("div", { class: collapsibleCode, children: [
-          /* @__PURE__ */ jsxs("button", { class: collapsibleBtn, children: [
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "9. Assigned Class" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: collapsibleContent, children: /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample9 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample9 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsxs("div", { class: collapsibleCode, children: [
-          /* @__PURE__ */ jsxs("button", { class: collapsibleBtn, children: [
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
-            " Show TypeScript"
+            " Show JavaScript"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: collapsibleContent, children: /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample9 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample9 }) }) })
         ] })
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: exampleCardYellow, children: [
-        /* @__PURE__ */ jsx$1("h3", { class: exampleSubtitleYellow, children: "10. Object Spread Operator (JSON5)" }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "JEON:" }),
-        /* @__PURE__ */ jsxs("div", { class: collapsibleCode, children: [
-          /* @__PURE__ */ jsxs("button", { class: collapsibleBtn, children: [
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "10. Object Spread Operator (JSON5)" }),
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
             /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: collapsibleContent, children: /* @__PURE__ */ jsx$1("pre", { class: preCodeBlock, children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample10 }) }) })
+          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample10 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: fontMediumMb2, children: "TypeScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: preCodeBlockTs, children: /* @__PURE__ */ jsx$1("code", { class: "language-typescript", children: tsExample10 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: smallText, children: "Note: This feature requires JSON5 support to be enabled" })
+        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample10 }) }),
+        /* @__PURE__ */ jsx$1("p", { class: "text-sm text-gray-600 mt-2", children: "Note: This feature requires JSON5 support to be enabled" })
       ] })
     ] })
   ] }) });
 };
 const initCollapsible = () => {
-  const collapsibleBtns = document.querySelectorAll("button");
+  const collapsibleBtns = document.querySelectorAll(".collapsible-btn");
   collapsibleBtns.forEach((btn) => {
     btn.addEventListener("click", function() {
       const content = this.nextElementSibling;
@@ -19797,8 +19788,8 @@ const initCollapsible = () => {
         if (textNode && textNode.textContent) {
           if (textNode.textContent.includes("JEON")) {
             textNode.textContent = " Hide JEON";
-          } else if (textNode.textContent.includes("TypeScript")) {
-            textNode.textContent = " Hide TypeScript";
+          } else if (textNode.textContent.includes("JavaScript")) {
+            textNode.textContent = " Hide JavaScript";
           } else {
             textNode.textContent = " Hide Output";
           }
@@ -19809,8 +19800,8 @@ const initCollapsible = () => {
         if (textNode && textNode.textContent) {
           if (textNode.textContent.includes("JEON")) {
             textNode.textContent = " Show JEON";
-          } else if (textNode.textContent.includes("TypeScript")) {
-            textNode.textContent = " Show TypeScript";
+          } else if (textNode.textContent.includes("JavaScript")) {
+            textNode.textContent = " Show JavaScript";
           } else {
             textNode.textContent = " Show Output";
           }
@@ -19823,4 +19814,4 @@ effect(() => {
   initCollapsible();
 });
 render(/* @__PURE__ */ jsx$1(App, {}), document.getElementById("app"));
-//# sourceMappingURL=index-B-8CrQZv.js.map
+//# sourceMappingURL=index-ltf__4Xx.js.map

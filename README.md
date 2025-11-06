@@ -6,7 +6,7 @@ A bidirectional converter between JEON (JSON-based Executable Object Notation) a
 
 ## Demo
 
-Playground: [https://jeonts.github.io/jeonjs//](https://jeonts.github.io/jeonjs//)
+Playground: [https://jeonts.github.io/jeonjs//](https://jeonts.github.io/jeonjs)
 
 Repository: [https://github.com/jeonts/jeonjs](https://github.com/jeonts/jeonjs)
 

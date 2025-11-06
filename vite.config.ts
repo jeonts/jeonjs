@@ -21,13 +21,14 @@ export default defineConfig(({ command, mode }) => {
         outDir: 'dist',
         rollupOptions: {
           // Externalize dependencies for the library build
-          external: ['typescript', 'acorn', 'woby', 'json5'],
+          external: ['typescript', 'acorn', 'woby', 'json5', 'prismjs'],
           output: {
             globals: {
               typescript: 'ts',
               acorn: 'acorn',
               woby: 'woby',
-              json5: 'JSON5'
+              json5: 'JSON5',
+              prismjs: 'Prism'
             }
           }
         }
@@ -38,6 +39,7 @@ export default defineConfig(({ command, mode }) => {
         exclude: /node_modules/
       },
       optimizeDeps: {
+        exclude: ['prismjs'],
         esbuildOptions: {
           loader: {
             '.js': 'jsx',
@@ -74,6 +76,7 @@ export default defineConfig(({ command, mode }) => {
       exclude: /node_modules/
     },
     optimizeDeps: {
+      exclude: ['prismjs'],
       esbuildOptions: {
         loader: {
           '.js': 'jsx',

@@ -19,7 +19,6 @@
       --tw-ring-offset-width: 0px;
       --tw-ring-offset-color: #fff;
       --tw-ring-offset-shadow: 0 0 #0000;
-      --tw-duration: initial;
     }
   }
 }
@@ -368,10 +367,6 @@
     margin-inline: auto;
   }
 
-  .my-4 {
-    margin-block: calc(var(--spacing) * 4);
-  }
-
   .my-6 {
     margin-block: calc(var(--spacing) * 6);
   }
@@ -392,10 +387,6 @@
     margin-top: calc(var(--spacing) * 8);
   }
 
-  .mt-10 {
-    margin-top: calc(var(--spacing) * 10);
-  }
-
   .mr-2 {
     margin-right: calc(var(--spacing) * 2);
   }
@@ -410,10 +401,6 @@
 
   .mb-4 {
     margin-bottom: calc(var(--spacing) * 4);
-  }
-
-  .mb-5 {
-    margin-bottom: calc(var(--spacing) * 5);
   }
 
   .mb-8 {
@@ -444,12 +431,12 @@
     display: inline;
   }
 
-  .h-80 {
-    height: calc(var(--spacing) * 80);
+  .table {
+    display: table;
   }
 
-  .min-h-\[200px\] {
-    min-height: 200px;
+  .h-64 {
+    height: calc(var(--spacing) * 64);
   }
 
   .w-full {
@@ -464,18 +451,6 @@
     max-width: var(--container-6xl);
   }
 
-  .flex-1 {
-    flex: 1;
-  }
-
-  .cursor-pointer {
-    cursor: pointer;
-  }
-
-  .resize-y {
-    resize: vertical;
-  }
-
   .list-disc {
     list-style-type: disc;
   }
@@ -488,8 +463,12 @@
     align-items: center;
   }
 
-  .gap-6 {
-    gap: calc(var(--spacing) * 6);
+  .justify-center {
+    justify-content: center;
+  }
+
+  .gap-4 {
+    gap: calc(var(--spacing) * 4);
   }
 
   :where(.space-y-2 > :not(:last-child)) {
@@ -518,48 +497,17 @@
     border-radius: var(--radius-md);
   }
 
-  .rounded-r {
-    border-top-right-radius: .25rem;
-    border-bottom-right-radius: .25rem;
-  }
-
   .border {
     border-style: var(--tw-border-style);
     border-width: 1px;
-  }
-
-  .border-l-4 {
-    border-left-style: var(--tw-border-style);
-    border-left-width: 4px;
-  }
-
-  .border-none {
-    --tw-border-style: none;
-    border-style: none;
-  }
-
-  .border-blue-500 {
-    border-color: var(--color-blue-500);
   }
 
   .border-gray-300 {
     border-color: var(--color-gray-300);
   }
 
-  .border-green-500 {
-    border-color: var(--color-green-500);
-  }
-
-  .border-purple-500 {
-    border-color: var(--color-purple-500);
-  }
-
-  .border-yellow-500 {
-    border-color: var(--color-yellow-500);
-  }
-
-  .bg-blue-600 {
-    background-color: var(--color-blue-600);
+  .bg-blue-500 {
+    background-color: var(--color-blue-500);
   }
 
   .bg-gray-50 {
@@ -576,10 +524,6 @@
 
   .bg-white {
     background-color: var(--color-white);
-  }
-
-  .bg-none {
-    background-image: none;
   }
 
   .p-3 {
@@ -606,20 +550,12 @@
     padding-inline: calc(var(--spacing) * 4);
   }
 
-  .px-5 {
-    padding-inline: calc(var(--spacing) * 5);
-  }
-
   .py-1 {
     padding-block: calc(var(--spacing) * 1);
   }
 
   .py-2 {
     padding-block: calc(var(--spacing) * 2);
-  }
-
-  .py-2\.5 {
-    padding-block: calc(var(--spacing) * 2.5);
   }
 
   .py-8 {
@@ -632,10 +568,6 @@
 
   .text-center {
     text-align: center;
-  }
-
-  .text-left {
-    text-align: left;
   }
 
   .font-mono {
@@ -691,10 +623,6 @@
     font-weight: var(--font-weight-semibold);
   }
 
-  .whitespace-pre {
-    white-space: pre;
-  }
-
   .text-blue-600 {
     color: var(--color-blue-600);
   }
@@ -711,25 +639,8 @@
     color: var(--color-gray-800);
   }
 
-  .text-green-600 {
-    color: var(--color-green-600);
-  }
-
-  .text-purple-600 {
-    color: var(--color-purple-600);
-  }
-
   .text-white {
     color: var(--color-white);
-  }
-
-  .text-yellow-600 {
-    color: var(--color-yellow-600);
-  }
-
-  .shadow-\[0_0_0_3px_rgba\(59\,130\,246\,0\.2\)\] {
-    --tw-shadow: 0 0 0 3px var(--tw-shadow-color, #3b82f633);
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 
   .shadow-lg {
@@ -737,29 +648,15 @@
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 
-  .transition {
-    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events;
+  .transition-colors {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
 
-  .duration-200 {
-    --tw-duration: .2s;
-    transition-duration: .2s;
-  }
-
-  .outline-none {
-    --tw-outline-style: none;
-    outline-style: none;
-  }
-
   @media (hover: hover) {
-    .hover\:bg-blue-700:hover {
-      background-color: var(--color-blue-700);
-    }
-
-    .hover\:bg-gray-100:hover {
-      background-color: var(--color-gray-100);
+    .hover\:bg-blue-600:hover {
+      background-color: var(--color-blue-600);
     }
 
     .hover\:text-blue-800:hover {
@@ -771,8 +668,12 @@
     }
   }
 
-  @media (min-width: 48rem) {
-    .md\:flex-row {
+  @media (min-width: 64rem) {
+    .lg\:w-1\/2 {
+      width: 50%;
+    }
+
+    .lg\:flex-row {
       flex-direction: row;
     }
   }
@@ -872,11 +773,6 @@
   syntax: "*";
   inherits: false;
   initial-value: 0 0 #0000;
-}
-
-@property --tw-duration {
-  syntax: "*";
-  inherits: false
 }
 /**
  * prism.js default theme for JavaScript, CSS and HTML

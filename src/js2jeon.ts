@@ -10,7 +10,7 @@ import { ast2jeon } from './js2jeon.visitors/ast2jeon'
  */
 export function js2jeon(code: string, options?: { json?: typeof JSON }): any {
     try {
-        // Parse the TypeScript/JavaScript code using Acorn with JSX support
+        // Parse the JavaScript/JavaScript code using Acorn with JSX support
         const Parser = acorn.Parser.extend(jsx())
         const ast = Parser.parse(code, {
             ecmaVersion: 'latest',
@@ -22,7 +22,7 @@ export function js2jeon(code: string, options?: { json?: typeof JSON }): any {
         // Convert AST to JEON
         return ast2jeon(ast, options)
     } catch (error: any) {
-        console.error('Error parsing TypeScript/JavaScript code:', error)
+        console.error('Error parsing JavaScript/JavaScript code:', error)
         // Return error message in JEON format instead of null
         throw error
         // return {

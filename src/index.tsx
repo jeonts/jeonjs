@@ -1,78 +1,19 @@
 import './index.css'
-import { $, $$, render, useEffect } from 'woby'
+import { $, $$, render, useEffect, type JSX } from 'woby'
+import * as React from 'woby'
 import { jeon2js } from './jeon2js'
 import { js2jeon } from './js2jeon'
 import JSON5 from 'json5'
 // Import PrismJS for syntax highlighting
-import Prism from 'prismjs'
+import * as Prism from 'prismjs'
 import 'prismjs/themes/prism.css'
-// Import language components for syntax highlighting
-import 'prismjs/components/prism-typescript'
+// Import language components for syntax highlighting (keeping only one JavaScript import)
 import 'prismjs/components/prism-javascript'
 import 'prismjs/components/prism-json'
 
-// Add CSS for collapsible functionality
-const customCSS = `
-.collapsible-code {
-    margin: 1rem 0;
-}
+// Remove customCSS variable and CSS injection
 
-.collapsible-content {
-    margin-top: 0.5rem;
-}
-
-.collapsible-content.show {
-    display: block;
-}
-
-.collapsible-content.hidden {
-    display: none;
-}
-`
-
-const outputDiv = 'border border-gray-300 rounded-md p-3 bg-gray-50 overflow-auto resize-y min-h-[200px] font-mono text-sm whitespace-pre'
-
-// CSS class constants for better maintainability
-const container = 'max-w-6xl mx-auto p-5 bg-gray-800 text-white'
-const mainCard = 'bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800'
-const title = 'text-3xl font-bold text-center text-gray-800 mb-4'
-const subtitle = 'text-center text-gray-600 mb-8'
-const checkboxContainer = 'flex items-center mb-4'
-const checkbox = 'mr-2'
-const checkboxLabel = 'text-gray-700'
-const inputSection = 'flex flex-col md:flex-row gap-6 mb-8'
-const inputColumn = 'flex-1 flex flex-col'
-const sectionTitle = 'text-xl font-semibold text-gray-800 mb-3'
-const editableDiv = 'w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y text-gray-800 overflow-auto bg-white editable-div'
-const primaryButton = 'mt-3 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition duration-200'
-const outputSection = 'flex flex-col md:flex-row gap-6'
-const exampleSection = 'mt-10'
-const exampleTitle = 'text-2xl font-bold text-gray-800 mb-5'
-const exampleCard = 'mb-5 p-5 bg-gray-50 border-l-4 border-blue-500 rounded-r'
-const exampleCardGreen = 'mb-5 p-5 bg-gray-50 border-l-4 border-green-500 rounded-r'
-const exampleCardPurple = 'mb-5 p-5 bg-gray-50 border-l-4 border-purple-500 rounded-r'
-const exampleCardYellow = 'p-5 bg-gray-50 border-l-4 border-yellow-500 rounded-r'
-const exampleSubtitle = 'text-lg font-semibold text-blue-600 mb-3'
-const exampleSubtitleGreen = 'text-lg font-semibold text-green-600 mb-3'
-const exampleSubtitlePurple = 'text-lg font-semibold text-purple-600 mb-3'
-const exampleSubtitleYellow = 'text-lg font-semibold text-yellow-600 mb-3'
-const fontMedium = 'font-medium'
-const fontMediumMb2 = 'font-medium mb-2'
-const preCodeBlock = 'bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json'
-const preCodeBlockLast = 'bg-gray-100 p-3 rounded text-sm overflow-x-auto language-json'
-const preCodeBlockTs = 'bg-gray-100 p-3 rounded text-sm overflow-x-auto language-typescript'
-const collapsibleCode = 'collapsible-code'
-const collapsibleContent = 'collapsible-content hidden'
-const smallText = 'text-sm text-gray-600 mt-2'
-
-// Collapsible button styles
-const collapsibleBtn = 'background-none border-none py-2 px-4 cursor-pointer text-left w-full rounded-lg'
-const collapsibleBtnHover = 'hover:bg-gray-100'
-
-// Inject CSS into the document
-const style = document.createElement('style')
-style.textContent = customCSS
-document.head.appendChild(style)
+// Remove all CSS class constants
 
 const App = () => {
   const jeonInput = $(`{
@@ -84,10 +25,13 @@ const App = () => {
   const jsOutput = $('')
   const jeonOutput = $('')
   const useJSON5 = $(false)
+  const useClosure = $(false) // Add closure option
 
   // Create observable refs for the contentEditable divs
   const jeonInputRef = $<HTMLPreElement | null>(null)
   const jsInputRef = $<HTMLPreElement | null>(null)
+  const tsOutputCodeRef = $<HTMLElement | null>(null)
+  const jeonOutputCodeRef = $<HTMLElement | null>(null)
 
   // Create reactive variables to store highlighted HTML
   const highlightedJsOutput = $('')
@@ -100,7 +44,7 @@ const App = () => {
       console.log('Updating JS output highlight, content:', content)
       if (content) {
         try {
-          const highlighted = Prism.highlight(content, Prism.languages.typescript, 'typescript')
+          const highlighted = Prism.highlight(content, Prism.languages.javascript, 'javascript')
           console.log('Highlighted JS output:', highlighted)
           highlightedJsOutput(highlighted)
         } catch (e) {
@@ -143,25 +87,21 @@ const App = () => {
     updateHighlightedJeonOutput()
   })
 
-  // Function to highlight code blocks with PrismJS
-  const highlightCodeBlocks = () => {
-    // Use setTimeout to ensure DOM is updated before highlighting
-    setTimeout(() => {
-      Prism.highlightAll()
-      // Initialize collapsible functionality after Prism highlighting
-    }, 0)
-  }
+  // Effect to update the DOM with highlighted content
+  useEffect(() => {
+    const tsOutputElement = $$(tsOutputCodeRef)
+    if (tsOutputElement) {
+      tsOutputElement.innerHTML = $$(highlightedJsOutput)
+    }
+  })
 
-  // Function to handle input changes with syntax highlighting
-  const handleJeonInput = (e: any) => {
-    // Don't update the observable on input to prevent cursor reset
-    // The value will be captured when the convert button is clicked
-  }
+  useEffect(() => {
+    const jeonOutputElement = $$(jeonOutputCodeRef)
+    if (jeonOutputElement) {
+      jeonOutputElement.innerHTML = $$(highlightedJeonOutput)
+    }
+  })
 
-  const handleTsInput = (e: any) => {
-    // Don't update the observable on input to prevent cursor reset
-    // The value will be captured when the convert button is clicked
-  }
 
   // Function to handle paste events and prevent nested pre elements
   const handleJeonPaste = (e: ClipboardEvent) => {
@@ -190,6 +130,17 @@ const App = () => {
     }
   }
 
+  // Function to handle input changes with syntax highlighting
+  const handleJeonInput = (e: any) => {
+    // Don't update the observable on input to prevent cursor reset
+    // The value will be captured when the convert button is clicked
+  }
+
+  const handleTsInput = (e: any) => {
+    // Don't update the observable on input to prevent cursor reset
+    // The value will be captured when the convert button is clicked
+  }
+
   // Add useEffect to attach paste event listeners
   useEffect(() => {
     const jeonElement = $$(jeonInputRef)
@@ -214,7 +165,7 @@ const App = () => {
     }
   })
 
-  const convertJeonToTs = () => {
+  const convertJeonToJs = () => {
     try {
       // Get the current value from the contentEditable div using observable ref
       const refElement = $$(jeonInputRef)
@@ -242,9 +193,10 @@ const App = () => {
       console.log('typeof JSON5.parse:', typeof JSON5.parse)
 
       const jeon = useJSON5() ? JSON5.parse(currentValue) : JSON.parse(currentValue)
-      // Pass the JSON implementation to jeon2js
-      const code = jeon2js(jeon, { json: useJSON5() ? JSON5Wrapper : JSON })
-      console.log('Converted TypeScript code:', code)
+      // Pass the JSON implementation and closure option to jeon2js
+      // Note: We do NOT format the output in 1 line even when closure is checked
+      const code = jeon2js(jeon, { json: useJSON5() ? JSON5Wrapper : JSON, closure: useClosure() })
+      console.log('Converted JavaScript code:', code)
       jsOutput(code)
     } catch (error: any) {
       console.error('convertJeonToTs error:', error)
@@ -252,7 +204,7 @@ const App = () => {
     }
   }
 
-  const convertTsToJeon = () => {
+  const convertJsToJeon = () => {
     try {
       // Get the current value from the contentEditable div using observable ref
       const refElement = $$(jsInputRef)
@@ -336,7 +288,8 @@ const App = () => {
 
   // Initialize with conversion and highlighting
   useEffect(() => {
-    convertJeonToTs()
+    convertJeonToJs()
+    convertJsToJeon()
   })
 
   // Helper functions to display literal curly braces
@@ -524,221 +477,238 @@ const App = () => {
   const tsExample10 = `let a = {1:2, 2:3, ...{3:3, 4:4}, 5:5};`
 
   return (
-    <div class={container}>
-      <div class={mainCard}>
-        <h1 class={title}>JEON Converter Demo</h1>
-        <p class={subtitle}>A bidirectional converter between JEON (JSON-based Executable Object Notation) and TypeScript/JavaScript.</p>
+    <div class="max-w-6xl mx-auto p-5 bg-gray-800 text-white">
+      <div class="bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-4">JEON Converter Demo</h1>
+        <p class="text-center text-gray-600 mb-8">A bidirectional converter between JEON (JSON-based Executable Object Notation) and JavaScript/JavaScript.</p>
 
-        <div class={checkboxContainer}>
+        <div class="flex items-center justify-left mb-4">
           <input
             type="checkbox"
             id="useJSON5"
             checked={useJSON5()}
             onChange={(e: any) => useJSON5(e.target.checked)}
-            class={checkbox}
+            class="mr-2"
           />
-          <label for="useJSON5" class={checkboxLabel}>
+          <label for="useJSON5" class="text-gray-600">
             Use JSON5 (allows comments, trailing commas, etc.)
           </label>
         </div>
 
-        <div class={inputSection}>
-          <div class={inputColumn}>
-            <h2 class={sectionTitle}>JEON to TypeScript</h2>
+        <div class="flex items-center justify-left mb-4">
+          <input
+            type="checkbox"
+            id="useClosure"
+            checked={useClosure()}
+            onChange={(e: any) => useClosure(e.target.checked)}
+            class="mr-2"
+          />
+          <label for="useClosure" class="text-gray-600">
+            Use Closure (enables safe evaluation)
+          </label>
+        </div>
+
+        <div class="flex flex-col lg:flex-row justify-center mb-4 gap-4">
+          <div class="w-full lg:w-1/2">
+            <h2 class="text-xl font-bold mb-2">JEON to JavaScript</h2>
             <pre
               ref={jeonInputRef}
               contentEditable
               onInput={handleJeonInput}
-              class={editableDiv}
+              class="w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto"
             >{jeonInput}</pre>
             <button
-              onClick={convertJeonToTs}
-              class={primaryButton}
+              onClick={convertJeonToJs}
+              class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-2 hover:bg-blue-600 transition-colors"
             >
-              Convert to TypeScript
+              Convert to JavaScript
             </button>
           </div>
 
-          <div class={inputColumn}>
-            <h2 class={sectionTitle}>TypeScript to JEON</h2>
+          <div class="w-full lg:w-1/2">
+            <h2 class="text-xl font-bold mb-2">JavaScript to JEON</h2>
             <pre
               ref={jsInputRef}
               contentEditable
               onInput={handleTsInput}
-              class={editableDiv}
+              class="w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto"
             >{jsInput}</pre>
             <button
-              onClick={convertTsToJeon}
-              class={primaryButton}
+              onClick={convertJsToJeon}
+              class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-2 hover:bg-blue-600 transition-colors"
             >
               Convert to JEON
             </button>
           </div>
         </div>
 
-        <div class={outputSection}>
-          <div class={inputColumn}>
-            <h2 class={sectionTitle}>TypeScript Output</h2>
+        <div class="flex flex-col lg:flex-row justify-center mb-4 gap-4">
+          <div class="w-full lg:w-1/2">
+            <h2 class="text-xl font-bold mb-2">JavaScript Output</h2>
             <pre
               id="ts-output"
-              class={['w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y bg-gray-50 text-gray-800 overflow-auto', outputDiv]}
-            ><code id="ts-output-code" dangerouslySetInnerHTML={{ __html: highlightedJsOutput }} /></pre>
+              class="w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto"
+            >
+              <code ref={tsOutputCodeRef} id="ts-output-code"></code>
+            </pre>
           </div>
 
-          <div class={inputColumn}>
-            <h2 class={sectionTitle}>JEON Output</h2>
+          <div class="w-full lg:w-1/2">
+            <h2 class="text-xl font-bold mb-2">JEON Output</h2>
             <pre
               id="jeon-output"
-              class={['w-full h-80 font-mono text-sm p-3 border border-gray-300 rounded-md resize-y bg-gray-50 text-gray-800 overflow-auto', outputDiv]}
-            ><code id="jeon-output-code" dangerouslySetInnerHTML={{ __html: highlightedJeonOutput }} /></pre>
+              class="w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto"
+            >
+              <code ref={jeonOutputCodeRef} id="jeon-output-code"></code>
+            </pre>
           </div>
         </div>
 
-        <div class={exampleSection}>
-          <h2 class={exampleTitle}>Example Conversions</h2>
+        <div class="mb-4">
+          <h2 class="text-xl font-bold mb-4">Example Conversions</h2>
 
-          <div class={exampleCard}>
-            <h3 class={exampleSubtitle}>1. Function Declaration</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <pre class={preCodeBlock}><code class="language-json">{jeonExample1}</code></pre>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample1}</code></pre>
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">1. Function Declaration</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample1}</code></pre>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample1}</code></pre>
           </div>
 
-          <div class={exampleCard}>
-            <h3 class={exampleSubtitle}>2. Variable Declaration</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <pre class={preCodeBlock}><code class="language-json">{jeonExample2}</code></pre>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample2}</code></pre>
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">2. Variable Declaration</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample2}</code></pre>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample2}</code></pre>
           </div>
 
-          <div class={exampleCard}>
-            <h3 class={exampleSubtitle}>3. Arrow Function</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <pre class={preCodeBlock}><code class="language-json">{jeonExample3}</code></pre>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample3}</code></pre>
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">3. Arrow Function</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample3}</code></pre>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample3}</code></pre>
           </div>
 
-          <div class={exampleCardGreen}>
-            <h3 class={exampleSubtitleGreen}>4. Generator Function</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <div class={collapsibleCode}>
-              <button class={collapsibleBtn}>
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">4. Generator Function</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
                 <span class="mr-2">▼</span> Show JEON
               </button>
-              <div class={collapsibleContent}>
-                <pre class={preCodeBlock}><code class="language-json">{jeonExample4}</code></pre>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample4}</code></pre>
               </div>
             </div>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample4}</code></pre>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample4}</code></pre>
           </div>
 
-          <div class={exampleCardGreen}>
-            <h3 class={exampleSubtitleGreen}>5. Async/Await</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <div class={collapsibleCode}>
-              <button class={collapsibleBtn}>
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">5. Async/Await</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
                 <span class="mr-2">▼</span> Show JEON
               </button>
-              <div class={collapsibleContent}>
-                <pre class={preCodeBlock}><code class="language-json">{jeonExample5}</code></pre>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample5}</code></pre>
               </div>
             </div>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample5}</code></pre>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample5}</code></pre>
           </div>
 
-          <div class={exampleCardGreen}>
-            <h3 class={exampleSubtitleGreen}>6. JSX Elements</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <div class={collapsibleCode}>
-              <button class={collapsibleBtn}>
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">6. JSX Elements</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
                 <span class="mr-2">▼</span> Show JEON
               </button>
-              <div class={collapsibleContent}>
-                <pre class={preCodeBlock}><code class="language-json">{jeonExample6}</code></pre>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample6}</code></pre>
               </div>
             </div>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample6}</code></pre>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample6}</code></pre>
           </div>
 
-          <div class={exampleCardGreen}>
-            <h3 class={exampleSubtitleGreen}>7. Array Spread Operator</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <div class={collapsibleCode}>
-              <button class={collapsibleBtn}>
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">7. Array Spread Operator</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
                 <span class="mr-2">▼</span> Show JEON
               </button>
-              <div class={collapsibleContent}>
-                <pre class={preCodeBlock}><code class="language-json">{jeonExample7}</code></pre>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample7}</code></pre>
               </div>
             </div>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample7}</code></pre>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample7}</code></pre>
           </div>
 
-          <div class={exampleCardPurple}>
-            <h3 class={exampleSubtitlePurple}>8. Class Declaration</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <div class={collapsibleCode}>
-              <button class={collapsibleBtn}>
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">8. Class Declaration</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
                 <span class="mr-2">▼</span> Show JEON
               </button>
-              <div class={collapsibleContent}>
-                <pre class={preCodeBlock}><code class="language-json">{jeonExample8}</code></pre>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample8}</code></pre>
               </div>
             </div>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <div class={collapsibleCode}>
-              <button class={collapsibleBtn}>
-                <span class="mr-2">▼</span> Show TypeScript
+            <p class="font-medium mb-2">JavaScript:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
+                <span class="mr-2">▼</span> Show JavaScript
               </button>
-              <div class={collapsibleContent}>
-                <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample8}</code></pre>
-              </div>
-            </div>
-          </div>
-
-          <div class={exampleCardPurple}>
-            <h3 class={exampleSubtitlePurple}>9. Assigned Class</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <div class={collapsibleCode}>
-              <button class={collapsibleBtn}>
-                <span class="mr-2">▼</span> Show JEON
-              </button>
-              <div class={collapsibleContent}>
-                <pre class={preCodeBlock}><code class="language-json">{jeonExample9}</code></pre>
-              </div>
-            </div>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <div class={collapsibleCode}>
-              <button class={collapsibleBtn}>
-                <span class="mr-2">▼</span> Show TypeScript
-              </button>
-              <div class={collapsibleContent}>
-                <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample9}</code></pre>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample8}</code></pre>
               </div>
             </div>
           </div>
 
-          <div class={exampleCardYellow}>
-            <h3 class={exampleSubtitleYellow}>10. Object Spread Operator (JSON5)</h3>
-            <p class={fontMediumMb2}>JEON:</p>
-            <div class={collapsibleCode}>
-              <button class={collapsibleBtn}>
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">9. Assigned Class</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
                 <span class="mr-2">▼</span> Show JEON
               </button>
-              <div class={collapsibleContent}>
-                <pre class={preCodeBlock}><code class="language-json">{jeonExample10}</code></pre>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample9}</code></pre>
               </div>
             </div>
-            <p class={fontMediumMb2}>TypeScript:</p>
-            <pre class={preCodeBlockTs}><code class="language-typescript">{tsExample10}</code></pre>
-            <p class={smallText}>Note: This feature requires JSON5 support to be enabled</p>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
+                <span class="mr-2">▼</span> Show JavaScript
+              </button>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample9}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">10. Object Spread Operator (JSON5)</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
+                <span class="mr-2">▼</span> Show JEON
+              </button>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample10}</code></pre>
+              </div>
+            </div>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample10}</code></pre>
+            <p class="text-sm text-gray-600 mt-2">Note: This feature requires JSON5 support to be enabled</p>
           </div>
         </div>
       </div>
@@ -748,8 +718,8 @@ const App = () => {
 
 // Add collapsible functionality
 const initCollapsible = () => {
-  // Add collapsible functionality
-  const collapsibleBtns = document.querySelectorAll('button')
+  // Add collapsible functionality only to buttons with collapsible-btn class
+  const collapsibleBtns = document.querySelectorAll('.collapsible-btn')
   collapsibleBtns.forEach(btn => {
     btn.addEventListener('click', function () {
       const content = this.nextElementSibling
@@ -763,8 +733,8 @@ const initCollapsible = () => {
         if (textNode && textNode.textContent) {
           if (textNode.textContent.includes('JEON')) {
             textNode.textContent = ' Hide JEON'
-          } else if (textNode.textContent.includes('TypeScript')) {
-            textNode.textContent = ' Hide TypeScript'
+          } else if (textNode.textContent.includes('JavaScript')) {
+            textNode.textContent = ' Hide JavaScript'
           } else {
             textNode.textContent = ' Hide Output'
           }
@@ -776,8 +746,8 @@ const initCollapsible = () => {
         if (textNode && textNode.textContent) {
           if (textNode.textContent.includes('JEON')) {
             textNode.textContent = ' Show JEON'
-          } else if (textNode.textContent.includes('TypeScript')) {
-            textNode.textContent = ' Show TypeScript'
+          } else if (textNode.textContent.includes('JavaScript')) {
+            textNode.textContent = ' Show JavaScript'
           } else {
             textNode.textContent = ' Show Output'
           }
