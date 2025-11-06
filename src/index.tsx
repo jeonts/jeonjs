@@ -85,6 +85,10 @@ const App = () => {
   const jeonOutput = $('')
   const useJSON5 = $(false)
 
+  // Create observable refs for the contentEditable divs
+  const jeonInputRef = $<HTMLPreElement | null>(null)
+  const jsInputRef = $<HTMLPreElement | null>(null)
+
   // Create reactive variables to store highlighted HTML
   const highlightedJsOutput = $('')
   const highlightedJeonOutput = $('')
@@ -161,12 +165,12 @@ const App = () => {
 
   const convertJeonToTs = () => {
     try {
-      // Get the current value from the contentEditable div
-      const jeonInputElement = document.getElementById('jeon-input')
-      const currentValue = jeonInputElement ? (jeonInputElement.textContent || jeonInputElement.innerText) : ''
+      // Get the current value from the contentEditable div using observable ref
+      const refElement = $$(jeonInputRef)
+      const currentValue = refElement ? (refElement.textContent || refElement.innerText) : ''
 
-      // Update the observable with the current value
-      jeonInput(currentValue)
+      // Note: We don't update jeonInput here because we're reading from the DOM directly
+      // The jeonInput observable is for the reactive state that drives the UI
 
       console.log('JSON5:', JSON5)
       console.log('typeof JSON5:', typeof JSON5)
@@ -199,12 +203,12 @@ const App = () => {
 
   const convertTsToJeon = () => {
     try {
-      // Get the current value from the contentEditable div
-      const tsInputElement = document.getElementById('ts-input')
-      const currentValue = tsInputElement ? (tsInputElement.textContent || tsInputElement.innerText) : ''
+      // Get the current value from the contentEditable div using observable ref
+      const refElement = $$(jsInputRef)
+      const currentValue = refElement ? (refElement.textContent || refElement.innerText) : ''
 
-      // Update the observable with the current value
-      jsInput(currentValue)
+      // Note: We don't update jsInput here because we're reading from the DOM directly
+      // The jsInput observable is for the reactive state that drives the UI
 
       console.log('JSON5:', JSON5)
       console.log('typeof JSON5:', typeof JSON5)
@@ -248,6 +252,10 @@ const App = () => {
             jeon = wrappedJeon
             // Update the input to show the wrapped version
             jsInput(wrappedCode)
+            // Also update the contentEditable div directly to reflect the change
+            if (refElement) {
+              refElement.textContent = wrappedCode
+            }
           } else {
             // If wrapping also produces a labeled statement, use the original result
             // This maintains backward compatibility
@@ -487,7 +495,7 @@ const App = () => {
           <div class={inputColumn}>
             <h2 class={sectionTitle}>JEON to TypeScript</h2>
             <pre
-              id="jeon-input"
+              ref={jeonInputRef}
               contentEditable
               onInput={handleJeonInput}
               class={editableDiv}
@@ -503,7 +511,7 @@ const App = () => {
           <div class={inputColumn}>
             <h2 class={sectionTitle}>TypeScript to JEON</h2>
             <pre
-              id="ts-input"
+              ref={jsInputRef}
               contentEditable
               onInput={handleTsInput}
               class={editableDiv}
