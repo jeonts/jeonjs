@@ -3028,7 +3028,8 @@ function visitFunctionDeclaration$1(keys, jeon, visit, jsonImpl, closure = false
       const bodyStr = Array.isArray(body) ? body.map((stmt) => visit(stmt)).join(";\n  ") : visit(body);
       if (closure) {
         const contextObj = params.map((p) => `${p}: ${p}`).join(", ");
-        return `${key2.split("(")[0]}(${params.join(", ")}) { return evalJeon(${JSON.stringify(body)}, {${contextObj}}); }`;
+        const formattedBody = jsonImpl ? jsonImpl.stringify(body, null, 2) : JSON.stringify(body, null, 2);
+        return `${key2.split("(")[0]}(${params.join(", ")}) { return evalJeon(${formattedBody}, {${contextObj}}); }`;
       }
       return `${key2.split("(")[0]}(${params.join(", ")}) {
   ${bodyStr}
@@ -19009,7 +19010,6 @@ function requirePrism() {
   return prism.exports;
 }
 var prismExports = requirePrism();
-const Prism$1 = /* @__PURE__ */ getDefaultExportFromCjs(prismExports);
 Prism.languages.javascript = Prism.languages.extend("clike", {
   "class-name": [
     Prism.languages.clike["class-name"],
@@ -19198,7 +19198,7 @@ const App = () => {
       console.log("Updating JS output highlight, content:", content);
       if (content) {
         try {
-          const highlighted = Prism$1.highlight(content, Prism$1.languages.JavaScript, "JavaScript");
+          const highlighted = prismExports.highlight(content, prismExports.languages.javascript, "javascript");
           console.log("Highlighted JS output:", highlighted);
           highlightedJsOutput(highlighted);
         } catch (e) {
@@ -19221,7 +19221,7 @@ const App = () => {
             formattedContent = JSON.stringify(parsed, null, 2);
           } catch {
           }
-          const highlighted = Prism$1.highlight(formattedContent, Prism$1.languages.json, "json");
+          const highlighted = prismExports.highlight(formattedContent, prismExports.languages.json, "json");
           console.log("Highlighted JEON output:", highlighted);
           highlightedJeonOutput(highlighted);
         } catch (e) {
@@ -19548,6 +19548,22 @@ const App = () => {
   }
 }`;
   const tsExample10 = `let a = {1:2, 2:3, ...{3:3, 4:4}, 5:5};`;
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).catch((err) => {
+      console.error("Failed to copy text: ", err);
+    });
+  };
+  const pasteFromClipboard = async (ref2, setter) => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (ref2) {
+        ref2.textContent = text;
+        setter(text);
+      }
+    } catch (err) {
+      console.error("Failed to read clipboard contents: ", err);
+    }
+  };
   return /* @__PURE__ */ jsx$1("div", { class: "max-w-6xl mx-auto p-5 bg-gray-800 text-white", children: /* @__PURE__ */ jsxs("div", { class: "bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800", children: [
     /* @__PURE__ */ jsx$1("h1", { class: "text-3xl font-bold text-center text-gray-800 mb-4", children: "JEON Converter Demo" }),
     /* @__PURE__ */ jsx$1("p", { class: "text-center text-gray-600 mb-8", children: "A bidirectional converter between JEON (JSON-based Executable Object Notation) and JavaScript/JavaScript." }),
@@ -19578,8 +19594,38 @@ const App = () => {
       /* @__PURE__ */ jsx$1("label", { for: "useClosure", class: "text-gray-600", children: "Use Closure (enables safe evaluation)" })
     ] }),
     /* @__PURE__ */ jsxs("div", { class: "flex flex-col lg:flex-row justify-center mb-4 gap-4", children: [
-      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2", children: [
-        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-2", children: "JEON to JavaScript" }),
+      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2 relative", children: [
+        /* @__PURE__ */ jsxs("div", { class: "flex justify-between items-center mb-2", children: [
+          /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold", children: "JEON to JavaScript" }),
+          /* @__PURE__ */ jsxs("div", { class: "flex gap-2", children: [
+            /* @__PURE__ */ jsx$1(
+              "button",
+              {
+                onClick: () => {
+                  const refElement = get(jeonInputRef);
+                  const currentValue = refElement ? refElement.textContent || refElement.innerText : "";
+                  copyToClipboard(currentValue);
+                },
+                class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
+                title: "Copy"
+              }
+            ),
+            /* @__PURE__ */ jsx$1(
+              "button",
+              {
+                onClick: () => {
+                  pasteFromClipboard(get(jeonInputRef), jeonInput);
+                },
+                class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
+                title: "Paste",
+                children: /* @__PURE__ */ jsxs("svg", { xmlns: "http://www.w3.org/2000/svg", width: "800px", height: "800px", viewBox: "0 0 16 16", fill: "none", children: [
+                  /* @__PURE__ */ jsx$1("path", { d: "M0 0H10V4H4V10H0V0Z", fill: "#000000" }),
+                  /* @__PURE__ */ jsx$1("path", { d: "M16 6H6V16H16V6Z", fill: "#000000" })
+                ] })
+              }
+            )
+          ] })
+        ] }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
@@ -19599,8 +19645,36 @@ const App = () => {
           }
         )
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2", children: [
-        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-2", children: "JavaScript to JEON" }),
+      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2 relative", children: [
+        /* @__PURE__ */ jsxs("div", { class: "flex justify-between items-center mb-2", children: [
+          /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold", children: "JavaScript to JEON" }),
+          /* @__PURE__ */ jsxs("div", { class: "flex gap-2", children: [
+            /* @__PURE__ */ jsx$1(
+              "button",
+              {
+                onClick: () => {
+                  const refElement = get(jsInputRef);
+                  const currentValue = refElement ? refElement.textContent || refElement.innerText : "";
+                  copyToClipboard(currentValue);
+                },
+                class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
+                title: "Copy",
+                children: /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-[1em] w-[1em]", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { d: "M8 3a1 1 0 000 2h4a1 1 0 100-2H8zM6 7a1 1 0 000 2h8a1 1 0 100-2H6zm-2 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zm0 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" }) })
+              }
+            ),
+            /* @__PURE__ */ jsx$1(
+              "button",
+              {
+                onClick: () => {
+                  pasteFromClipboard(get(jsInputRef), jsInput);
+                },
+                class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
+                title: "Paste",
+                children: /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", d: "M7 2a1 1 0 00-.707 1.707L7 4.414v3.758a1 1 0 002 0V4.414l.707-.707A1 1 0 007 2zm5 4a1 1 0 00-1 1v8a1 1 0 001 1h4a1 1 0 001-1V7a1 1 0 00-1-1h-4zm-1 2a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1V8z", "clip-rule": "evenodd" }) })
+              }
+            )
+          ] })
+        ] }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
@@ -19622,8 +19696,19 @@ const App = () => {
       ] })
     ] }),
     /* @__PURE__ */ jsxs("div", { class: "flex flex-col lg:flex-row justify-center mb-4 gap-4", children: [
-      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2", children: [
-        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-2", children: "JavaScript Output" }),
+      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2 relative", children: [
+        /* @__PURE__ */ jsxs("div", { class: "flex justify-between items-center mb-2", children: [
+          /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold", children: "JavaScript Output" }),
+          /* @__PURE__ */ jsx$1(
+            "button",
+            {
+              onClick: () => copyToClipboard(get(jsOutput)),
+              class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
+              title: "Copy",
+              children: /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { d: "M8 3a1 1 0 000 2h4a1 1 0 100-2H8zM6 7a1 1 0 000 2h8a1 1 0 100-2H6zm-2 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zm0 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" }) })
+            }
+          )
+        ] }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
@@ -19633,8 +19718,19 @@ const App = () => {
           }
         )
       ] }),
-      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2", children: [
-        /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-2", children: "JEON Output" }),
+      /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2 relative", children: [
+        /* @__PURE__ */ jsxs("div", { class: "flex justify-between items-center mb-2", children: [
+          /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold", children: "JEON Output" }),
+          /* @__PURE__ */ jsx$1(
+            "button",
+            {
+              onClick: () => copyToClipboard(get(jeonOutput)),
+              class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
+              title: "Copy",
+              children: /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { d: "M8 3a1 1 0 000 2h4a1 1 0 100-2H8zM6 7a1 1 0 000 2h8a1 1 0 100-2H6zm-2 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zm0 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" }) })
+            }
+          )
+        ] }),
         /* @__PURE__ */ jsx$1(
           "pre",
           {
@@ -19814,4 +19910,4 @@ effect(() => {
   initCollapsible();
 });
 render(/* @__PURE__ */ jsx$1(App, {}), document.getElementById("app"));
-//# sourceMappingURL=index-ltf__4Xx.js.map
+//# sourceMappingURL=index-D5c091f1.js.map
