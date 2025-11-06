@@ -679,32 +679,51 @@ const App = () => {
             >
               <code ref={tsOutputCodeRef} id="ts-output-code"></code>
             </pre>
-            // Add evalJeon button that only shows when closure is checked
+            {/* Add evalJeon button that only shows when closure is checked */}
             <If when={() => $$(useClosure)}>
-              <button
-                onClick={evaluateJsOutput}
-                class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded mt-2 hover:bg-green-600 transition-colors"
-              >
-                Evaluate with evalJeon
-              </button>
-              // Add context input box
-              <div class="mt-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Evaluation Context (JSON):
-                </label>
-                <textarea
-                  value={evalContext}
-                  onInput={(e: any) => evalContext(e.target.value)}
-                  class="w-full h-24 font-mono text-sm p-2 border border-gray-300 rounded-md bg-gray-50 text-gray-800"
-                  placeholder='{"variableName": "value", "anotherVar": 42}'
-                />
+              <div class="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                <button
+                  onClick={evaluateJsOutput}
+                  class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 ease-in-out shadow-md hover:shadow-lg flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                  </svg>
+                  Evaluate with evalJeon
+                </button>
+
+                {/* Add context input box */}
+                <div class="mt-4">
+                  <label class="block text-sm font-semibold text-green-800 mb-2 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" />
+                    </svg>
+                    Evaluation Context (JSON/JSON5):
+                  </label>
+                  <textarea
+                    value={evalContext}
+                    onInput={(e: any) => evalContext(e.target.value)}
+                    class="w-full h-24 font-mono text-sm p-3 border border-green-300 rounded-md bg-white text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                    placeholder='{"variableName": "value", "anotherVar": 42}'
+                  />
+                  <p class="mt-1 text-xs text-green-600">Enter JSON context for variable evaluation</p>
+                </div>
+
+                {/* Add eval result display */}
+                <div class="mt-4">
+                  <label class="block text-sm font-semibold text-green-800 mb-2 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                    Evaluation Result:
+                  </label>
+                  <pre
+                    class="w-full h-32 font-mono text-sm p-3 border border-green-300 rounded-md bg-green-100 text-green-900 overflow-auto"
+                  >
+                    {evalResult}
+                  </pre>
+                </div>
               </div>
-              // Add eval result display
-              <pre
-                class="w-full h-32 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-100 text-gray-800 overflow-auto mt-2"
-              >
-                {evalResult}
-              </pre>
             </If>
           </div>
 
