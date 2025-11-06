@@ -1,0 +1,110 @@
+import './index.css'
+import { $, $$, render, useEffect } from 'woby'
+import { jeon2js } from './jeon2js'
+import { js2jeon } from './js2jeon'
+import { evalJeon } from './safeEval'
+import JSON5 from 'json5'
+// Import PrismJS for syntax highlighting
+import Prism from 'prismjs'
+import 'prismjs/themes/prism.css'
+// Import language components for syntax highlighting
+import 'prismjs/components/prism-JavaScript'
+import 'prismjs/components/prism-javascript'
+import 'prismjs/components/prism-json'
+
+// Define Tailwind classes
+const collapsibleCode = "my-4"
+const collapsibleBtn = "bg-none border-none py-2 px-4 cursor-pointer text-left w-full rounded-lg hover:bg-gray-100"
+const collapsibleContent = "mt-2"
+const collapsibleContentShow = "block"
+const collapsibleContentHidden = "hidden"
+const editableDiv = "border border-gray-300 rounded-md p-3 font-mono text-sm h-80 w-full resize-y text-gray-800 overflow-auto bg-white min-h-[200px] outline-none whitespace-pre"
+const editableDivFocus = "border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.2)]"
+const outputDiv = "border border-gray-300 rounded-md p-3 font-mono text-sm h-80 w-full resize-y bg-gray-50 text-gray-800 overflow-auto min-h-[200px] whitespace-pre"
+
+// Inject CSS into the document for focus styles (since Tailwind doesn't have a direct equivalent for the box-shadow)
+const style = document.createElement('style')
+style.textContent = `
+  .editable-div:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+`
+document.head.appendChild(style)
+
+const App = () => {
+  const jeonInput = $(`{
+  "function add(a, b)": [
+    { "return": { "+": ["@a", "@b"] } }
+  ]
+}`)
+  const tsInput = $('function sum(a, b) {\n  return a + b;\n}')
+  const tsOutput = $('')
+  const jeonOutput = $('')
+  const evalResult = $('')
+  const evalContext = $('{ "a": 5, "b": 3 }')
+  const useJSON5 = $(false)
+  const useClosure = $(false)
+
+  // Function to highlight code blocks with PrismJS
+  const highlightCodeBlocks = () => {
+    // Use setTimeout to ensure DOM is updated before highlighting
+    setTimeout(() => {
+      Prism.highlightAll()
+      // Initialize collapsible functionality after Prism highlighting
+    }, 0)
+  }
+
+  // // Function to handle input changes with syntax highlighting
+  // const handleJeonInput = (e: any) => {
+  //   const value = e.target.textContent || e.target.innerText
+  //   jeonInput(value)
+  // }
+
+  // const handleTsInput = (e: any) => {
+  //   const value = e.target.textContent || e.target.innerText
+  //   tsInput(value)
+  // }
+
+  const tsElement = $<HTMLDivElement>()
+
+  useEffect(() => {
+    const tse = $$(tsElement)
+    const tso = $$(tsOutput)
+    if (!tse) return
+    if (!tso) return
+
+    try {
+      tse.innerHTML = Prism.highlight(tso, Prism.languages.javascript, 'javascript')
+    } catch (e) {
+      // Fallback to plain text if highlighting fails
+      tse.textContent = String(e)
+    }
+  })
+
+  const jeonElement = $<HTMLDivElement>()
+
+  useEffect(() => {
+    const jse = $$(jeonElement)
+    const jso = $$(jeonOutput)
+    if (!jse) return
+    if (!jso) return
+
+    try {
+      // Try to parse as JSON first for better formatting
+      const parsed = JSON.parse(jso)
+      const formatted = JSON.stringify(parsed, null, 2)
+      jse.innerHTML = Prism.highlight(formatted, Prism.languages.json, 'json')
+    } catch {
+      // If not valid JSON, highlight as plain text
+      try {
+        jse.innerHTML = Prism.highlight(jso, Prism.languages.jeon, 'jeon')
+      } catch (e: any) {
+        // Fallback to plain text if highlighting fails
+        jse.textContent = String(e)
+      }
+    }
+  })
+}
+
+render(<App />, document.getElementById('app'))
