@@ -7,6 +7,45 @@
  * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
 export function visitOperator(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
+    // Handle unary operators
+    switch (op) {
+        case '-':
+        case '+':
+        case '!':
+        case '~':
+        case 'typeof':
+        case 'void':
+        case 'delete':
+            // Unary operators with prefix notation
+            // Check if it's a unary operator (single operand) vs binary operator (multiple operands)
+            if (Array.isArray(operands)) {
+                // Binary operator case - handled below
+                break;
+            } else if (typeof operands !== 'undefined') {
+                // Unary operator case
+                return `${op}${visit(operands)}`
+            }
+            break
+
+        case '++':
+        case '--':
+            // Handle increment/decrement operators
+            if (typeof operands !== 'undefined') {
+                // For prefix operators
+                return `${op}${visit(operands)}`
+            }
+            break
+
+        case '++postfix':
+        case '--postfix':
+            // Handle postfix increment/decrement operators
+            const actualOp = op.substring(0, 2)
+            if (typeof operands !== 'undefined') {
+                return `${visit(operands)}${actualOp}`
+            }
+            break
+    }
+
     switch (op) {
         case '[':
             // Handle array literals
@@ -21,7 +60,6 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
             return `(${visit(operands)})`
 
         case '+':
-        case '-':
         case '*':
         case '/':
         case '%':
@@ -35,6 +73,16 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
         case '>=':
         case '&&':
         case '||':
+            if (Array.isArray(operands) && operands.length >= 2) {
+                // Handle multiple operands by chaining binary operations
+                const operandStrings = operands.map(operand => visit(operand))
+                // Don't add extra parentheses for expressions already in parentheses
+                return `${operandStrings.join(` ${op} `)}`
+            }
+            break
+
+        case '-':
+            // Handle binary minus (separate from unary minus)
             if (Array.isArray(operands) && operands.length >= 2) {
                 // Handle multiple operands by chaining binary operations
                 const operandStrings = operands.map(operand => visit(operand))
@@ -84,14 +132,6 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
 
         case 'await':
             return `await ${visit(operands)}`
-
-        case '++':
-        case '--':
-            if (Array.isArray(operands) && operands.length === 1) {
-                return `${op}${visit(operands[0])}`
-            }
-            // Handle postfix
-            return `${visit(operands)}${op}`
 
         case '+=':
         case '-=':
