@@ -23,10 +23,10 @@ console.log()
 
 // Check if they match
 if (jsCode === convertedJs) {
-  console.log('✅ Round-trip test PASSED')
+    console.log('✅ Round-trip test PASSED')
 } else {
-  console.log('❌ Round-trip test FAILED')
-  console.log('Differences:')
-  console.log('Original:', JSON.stringify(jsCode))
-  console.log('Converted:', JSON.stringify(convertedJs))
+    console.log('❌ Round-trip test FAILED')
+    console.log('Differences:')
+    console.log('Original:', JSON.stringify(jsCode))
+    console.log('Converted:', JSON.stringify(convertedJs))
 }

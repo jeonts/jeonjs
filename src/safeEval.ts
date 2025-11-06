@@ -69,9 +69,25 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
     if (Array.isArray(jeon)) {
         // For arrays representing function bodies or statement sequences,
         // evaluate all statements and return the result of the last one
-        const results = jeon.map(item => evalJeon(item, context))
-        // Return the last result (important for function bodies)
-        return results[results.length - 1]
+        // Special handling: if any statement is a return, return its value immediately
+        for (let i = 0; i < jeon.length; i++) {
+            const item = jeon[i]
+            const result = evalJeon(item, context)
+
+            // If this is a return statement, return its value immediately
+            // Check if the original item was a return statement object
+            if (item && typeof item === 'object' && !Array.isArray(item) && item['return'] !== undefined) {
+                return result
+            }
+
+            // If this is the last item, return its result
+            if (i === jeon.length - 1) {
+                return result
+            }
+        }
+
+        // Fallback return (should not be reached)
+        return undefined
     }
 
     // Handle objects
@@ -90,14 +106,6 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
 
             // Handle arithmetic and comparison operators
             switch (op) {
-                case '+':
-                    if (Array.isArray(operands) && operands.length >= 2) {
-                        return operands.reduce((acc, curr) =>
-                            evalJeon(acc, context) + evalJeon(curr, context)
-                        )
-                    }
-                    break
-
                 case '-':
                     if (Array.isArray(operands)) {
                         if (operands.length === 1) {
@@ -108,6 +116,25 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                                 evalJeon(operands[0], context)
                             )
                         }
+                    } else if (operands !== undefined) {
+                        // Handle unary minus
+                        return -evalJeon(operands, context)
+                    }
+                    break
+
+                case '+':
+                    if (Array.isArray(operands)) {
+                        if (operands.length === 1) {
+                            return +evalJeon(operands[0], context)
+                        } else if (operands.length >= 2) {
+                            // Handle multiple operands for addition
+                            return operands.reduce((acc, curr) =>
+                                evalJeon(acc, context) + evalJeon(curr, context)
+                            )
+                        }
+                    } else if (operands !== undefined) {
+                        // Handle unary plus
+                        return +evalJeon(operands, context)
                     }
                     break
 
@@ -198,7 +225,25 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                     break
 
                 case '!':
-                    return !evalJeon(operands, context)
+                    if (operands !== undefined) {
+                        // Handle unary logical NOT
+                        return !evalJeon(operands, context)
+                    }
+                    break
+
+                case '~':
+                    if (operands !== undefined) {
+                        // Handle unary bitwise NOT
+                        return ~evalJeon(operands, context)
+                    }
+                    break
+
+                case 'typeof':
+                    if (operands !== undefined) {
+                        // Handle typeof operator
+                        return typeof evalJeon(operands, context)
+                    }
+                    break
 
                 case '(':
                     // Handle parentheses - just evaluate the contents

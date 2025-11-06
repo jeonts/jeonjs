@@ -20,7 +20,7 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
             // Check if it's a unary operator (single operand) vs binary operator (multiple operands)
             if (Array.isArray(operands)) {
                 // Binary operator case - handled below
-                break;
+                break
             } else if (typeof operands !== 'undefined') {
                 // Unary operator case
                 return `${op}${visit(operands)}`
