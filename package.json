@@ -13,7 +13,9 @@
     "preview": "vite preview",
     "example": "tsx src/example.ts",
     "example:closure": "tsx src/example-closure.ts",
-    "test": "chk src/test/*.test.ts"
+    "do not pnpm test, run 'chk src/test/*.test.ts' in cmd": "",
+    "test": "chk src/test/*.test.ts",
+    "test:consolidated": "chk src/test/consolidated.test.ts"
   },
   "keywords": [
     "jeon",
@@ -33,7 +35,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.16",
     "@types/node": "^24.9.1",
-    "@woby/chk": "^0.1.13",
+    "@woby/chk": "0.1.13",
     "acorn": "^8.15.0",
     "autoprefixer": "^10.4.21",
     "prismjs": "^1.30.0",

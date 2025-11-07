@@ -442,6 +442,29 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
             }
         }
 
+        // Handle array literals (special case where key is "[")
+        if (keys.length === 1 && keys[0] === '[') {
+            const arrayItems = (jeon as JeonObject)['[']
+            if (Array.isArray(arrayItems)) {
+                // Process array items, handling spread operators
+                const result: any[] = []
+                for (const item of arrayItems) {
+                    if (typeof item === 'object' && item !== null && !Array.isArray(item) && '...' in item) {
+                        // Handle spread operator
+                        const spreadValue = evalJeon(item['...'], context)
+                        if (Array.isArray(spreadValue)) {
+                            result.push(...spreadValue)
+                        } else {
+                            result.push(spreadValue)
+                        }
+                    } else {
+                        result.push(evalJeon(item, context))
+                    }
+                }
+                return result
+            }
+        }
+
         // Handle object literals
         const result: Record<string, any> = {}
         for (const key of keys) {
