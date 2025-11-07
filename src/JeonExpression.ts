@@ -22,6 +22,8 @@ export interface JeonOperatorMap {
     '&&': JeonArray
     '||': JeonArray
     '!': JeonValue
+    '~': JeonValue
+    'typeof': JeonValue
     '(': JeonValue
     '?': JeonArray
     '()': JeonArray

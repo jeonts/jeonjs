@@ -3,12 +3,15 @@ import { JeonExpression, JeonOperatorMap, JeonObject } from './JeonExpression'
 
 /**
  * Safe context object that serves as fallback for variable lookup.
- * This can be set externally to provide a safe set of variables and functions.
+ * This provides a safe set of variables and functions.
  * Default includes safe built-in objects that don't pose XSS risks.
+ * 
+ * This object is frozen to prevent external modifications that could
+ * introduce security vulnerabilities.
  */
-export const safeContext: Record<string, any> = {
+export const safeContext: Record<string, any> = Object.freeze({
     // Safe Math operations
-    Math: Math,
+    Math: Object.freeze(Math),
 
     // Safe type checking and conversion
     Number: Number,
@@ -25,7 +28,7 @@ export const safeContext: Record<string, any> = {
     parseFloat: parseFloat,
 
     // Safe JSON operations
-    JSON: JSON,
+    JSON: Object.freeze(JSON),
 
     // Safe constants
     undefined: undefined,
@@ -35,8 +38,8 @@ export const safeContext: Record<string, any> = {
     Infinity: Infinity,
     NaN: NaN,
 
-    console: console
-}
+    console: Object.freeze(console)
+})
 
 /**
  * Evaluates a JEON expression directly without converting to JavaScript.
