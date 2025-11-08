@@ -5,11 +5,12 @@ import { ast2jeon } from './ast2jeon'
 // to group consecutive declarations of the same kind.
 export function visitVariableDeclaration(node: acorn.VariableDeclaration, options?: { json?: typeof JSON }): any {
     // Use different keys based on declaration kind
-    const key = node.kind === 'const' ? '@@' : '@'
+    // Treat var the same as let for simplicity
+    const key = (node as acorn.VariableDeclaration).kind === 'const' ? '@@' : '@'
     const declarations: Record<string, any> = {}
     for (const decl of node.declarations) {
         if (decl.id.type === 'Identifier') {
-            declarations[(decl.id as acorn.Identifier).name] = decl.init ? ast2jeon(decl.init, options) : null
+            declarations[(decl.id as acorn.Identifier).name] = decl.init ? ast2jeon(decl.init, options) : '__undefined__'
         }
     }
     return {

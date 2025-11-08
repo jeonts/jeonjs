@@ -14,8 +14,7 @@
     "example": "tsx src/example.ts",
     "example:closure": "tsx src/example-closure.ts",
     "do not pnpm test, run 'chk src/test/*.test.ts' in cmd": "",
-    "test": "chk src/test/*.test.ts",
-    "test:consolidated": "chk src/test/consolidated.test.ts"
+    "test": "chk src/test/*.test.ts"
   },
   "keywords": [
     "jeon",

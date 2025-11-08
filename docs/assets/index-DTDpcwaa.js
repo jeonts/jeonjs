@@ -73,6 +73,7 @@ const nope = () => {
   return false;
 };
 const SYMBOL_OBSERVABLE = Symbol("Observable");
+const SYMBOL_OBSERVABLE_BOOLEAN = Symbol("Observable.Boolean");
 const SYMBOL_OBSERVABLE_FROZEN = Symbol("Observable.Frozen");
 const SYMBOL_OBSERVABLE_READABLE = Symbol("Observable.Readable");
 const SYMBOL_OBSERVABLE_WRITABLE = Symbol("Observable.Writable");
@@ -1287,7 +1288,7 @@ const getTarget = (value) => {
 const getUntracked = (value) => {
   if (!isObject$1(value))
     return value;
-  if (isUntracked(value))
+  if (isUntracked$1(value))
     return value;
   return new Proxy(value, STORE_UNTRACK_TRAPS);
 };
@@ -1322,7 +1323,7 @@ const isProxiable = (value) => {
     return true;
   return Object.getPrototypeOf(prototype) === null;
 };
-const isUntracked = (value) => {
+const isUntracked$1 = (value) => {
   if (value === null || typeof value !== "object")
     return false;
   return SYMBOL_STORE_UNTRACKED in value;
@@ -1333,7 +1334,7 @@ const throwNoSetterError = () => {
 const store = (value, options2) => {
   if (!isObject$1(value))
     return value;
-  if (isUntracked(value))
+  if (isUntracked$1(value))
     return value;
   return getStore(value, options2);
 };
@@ -1472,6 +1473,9 @@ const isArray$2 = (a) => a instanceof Array;
 const isBoolean = (value) => {
   return typeof value === "boolean";
 };
+const isComponent = (value) => {
+  return isFunction(value) && SYMBOL_UNTRACKED_UNWRAPPED in value;
+};
 const isFunction = (value) => {
   return typeof value === "function";
 };
@@ -1507,6 +1511,9 @@ const isSVGElement = /* @__PURE__ */ (() => {
 })();
 const isTemplateAccessor = (value) => {
   return isFunction(value) && SYMBOL_TEMPLATE_ACCESSOR in value;
+};
+const isTruthy = (value) => {
+  return !!value;
 };
 const isVoidChild = (value) => {
   return value === null || value === void 0 || typeof value === "boolean" || typeof value === "symbol";
@@ -1856,7 +1863,7 @@ const kebabToCamelCase = (str) => {
   return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
 };
 const camelToKebabCase = (str) => {
-  return str.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+  return str.replace(/[A-Z]/g, (match2) => `-${match2.toLowerCase()}`);
 };
 const normalizePropertyPath = (path) => {
   if (path.includes("$")) {
@@ -2525,14 +2532,166 @@ const root$1 = (fn) => {
   const stack2 = callStack();
   return new Root(true).wrap(fn, void 0, void 0, stack2);
 };
+const isObservableBoolean = (value) => {
+  return isFunction$1(value) && SYMBOL_OBSERVABLE_BOOLEAN in value;
+};
+const isObservableFrozen = (value) => {
+  var _a2, _b2;
+  return isFunction$1(value) && (SYMBOL_OBSERVABLE_FROZEN in value || !!((_b2 = (_a2 = value[SYMBOL_OBSERVABLE_READABLE]) == null ? void 0 : _a2.parent) == null ? void 0 : _b2.disposed));
+};
+const isUntracked = (value) => {
+  return isFunction$1(value) && (SYMBOL_UNTRACKED in value || SYMBOL_UNTRACKED_UNWRAPPED in value);
+};
+class Memo extends Observer {
+  /* CONSTRUCTOR */
+  constructor(fn, options2) {
+    super();
+    this.fn = fn;
+    this.observable = new Observable(UNINITIALIZED, options2, this);
+    const { stack: stack2 } = options2 ?? { stack: callStack() };
+    if ((options2 == null ? void 0 : options2.sync) === true) {
+      this.sync = true;
+      this.update(stack2);
+    }
+  }
+  /* API */
+  run(stack2) {
+    const result = super.refresh(this.fn, stack2);
+    if (!this.disposed && this.observables.empty()) {
+      this.disposed = true;
+    }
+    if (result !== UNAVAILABLE) {
+      this.observable.set(result);
+    }
+  }
+  stale(status, stack2) {
+    const statusPrev = this.status;
+    if (statusPrev >= status)
+      return;
+    this.status = status;
+    if (statusPrev === DIRTY_MAYBE_YES)
+      return;
+    this.observable.stale(DIRTY_MAYBE_YES, stack2);
+  }
+}
+const memo = (fn, options2) => {
+  const stack2 = callStack();
+  if (isObservableFrozen(fn)) {
+    return fn;
+  } else if (isUntracked(fn)) {
+    return frozen(fn(stack2));
+  } else {
+    const memo2 = new Memo(fn, options2);
+    const observable2 = readable(memo2.observable, stack2);
+    return observable2;
+  }
+};
+const boolean = (value) => {
+  if (isFunction$1(value)) {
+    if (isObservableFrozen(value) || isUntracked(value)) {
+      return !!value();
+    } else if (isObservableBoolean(value)) {
+      return value;
+    } else {
+      const boolean2 = memo(() => !!value());
+      boolean2[SYMBOL_OBSERVABLE_BOOLEAN] = true;
+      return boolean2;
+    }
+  } else {
+    return !!value;
+  }
+};
+function resolve(value) {
+  if (isFunction$1(value)) {
+    if (SYMBOL_UNTRACKED_UNWRAPPED in value) {
+      return resolve(value());
+    } else if (SYMBOL_UNTRACKED in value) {
+      return frozen(resolve(value()));
+    } else if (SYMBOL_OBSERVABLE in value) {
+      return value;
+    } else {
+      return memo(() => resolve(value()));
+    }
+  }
+  if (value instanceof Array) {
+    const resolved = new Array(value.length);
+    for (let i = 0, l = resolved.length; i < l; i++) {
+      resolved[i] = resolve(value[i]);
+    }
+    return resolved;
+  } else {
+    return value;
+  }
+}
 frozen(-1);
 frozen(-1);
+const warmup = (value) => {
+  untrack(value);
+  return value;
+};
+const match = (condition, values, fallback) => {
+  for (let i = 0, l = values.length; i < l; i++) {
+    const value = values[i];
+    if (value.length === 1)
+      return value[0];
+    if (is(value[0], condition))
+      return value[1];
+  }
+  return fallback;
+};
+function _switch(when, values, fallback) {
+  const isDynamic = isFunction$1(when) && !isObservableFrozen(when) && !isUntracked(when);
+  if (isDynamic) {
+    if (isObservableBoolean(when)) {
+      return memo(() => resolve(match(when(), values, fallback)));
+    }
+    const value = warmup(memo(() => match(when(), values, fallback)));
+    if (isObservableFrozen(value)) {
+      return frozen(resolve(value()));
+    } else {
+      return memo(() => resolve(get(value)));
+    }
+  } else {
+    const value = match(get(when), values, fallback);
+    return frozen(resolve(value));
+  }
+}
+const ternary = (when, valueTrue, valueFalse) => {
+  const condition = boolean(when);
+  return _switch(condition, [[true, valueTrue], [valueFalse]]);
+};
 function observable(value, options2) {
   const stack2 = callStack();
   return writable(new Observable(value, options2), stack2);
 }
 const isObservableWritable = (value) => {
   return isFunction$1(value) && SYMBOL_OBSERVABLE_WRITABLE in value;
+};
+function untracked(fn) {
+  const untracked2 = isFunction$1(fn) ? (...args) => untrack(() => fn(...args)) : () => fn;
+  untracked2[SYMBOL_UNTRACKED] = true;
+  return untracked2;
+}
+const useGuarded = (value, guard) => {
+  let valueLast;
+  const guarded = memo(() => {
+    const current2 = get(value);
+    if (!guard(current2)) return valueLast;
+    return valueLast = current2;
+  });
+  return () => {
+    const current2 = guarded();
+    if (isNil(current2)) throw new Error("The value never passed the type guard");
+    return current2;
+  };
+};
+const If = ({ when, fallback, children }) => {
+  if (isFunction(children) && !isObservable(children) && !isComponent(children)) {
+    const truthy = useGuarded(when, isTruthy);
+    return ternary(when, untracked(() => children(truthy)), fallback);
+  } else {
+    return ternary(when, children, fallback);
+  }
 };
 let cachedConstructedSheets = null;
 let stylesheetObserver = null;
@@ -2961,6 +3120,9 @@ const h2 = (type, props, ...children) => createElement(registry[type] || type, p
 const register = (components) => void assign$1(registry, components);
 assign$1(htm.bind(h2), { register });
 function visitString(jeon, jsonImpl) {
+  if (jeon === "[EmptyStatement]") {
+    return "";
+  }
   if (jeon.startsWith("@")) {
     const cleanName = jeon.substring(1);
     if (cleanName.includes(".")) {
@@ -2988,8 +3150,14 @@ function visitArray(jeon, visit, jsonImpl, isTopLevel = false, closure = false) 
   if (typeof firstElement === "object" && firstElement !== null) {
     const statementResults = jeon.map((expr) => {
       const result = visit(expr);
+      if (result === "") {
+        return "";
+      }
+      if (result.trim().startsWith("function") || result.trim().startsWith("const ") || result.trim().startsWith("let ") || result.trim().startsWith("var ")) {
+        return result;
+      }
       return result.endsWith(";") ? result : result + ";";
-    });
+    }).filter((result) => result !== "");
     if (statementResults.length > 0) {
       const lastStatement = statementResults[statementResults.length - 1];
       if (lastStatement.endsWith(";")) {
@@ -3059,6 +3227,9 @@ function visitVariableDeclaration$1(op, operands, visit, jsonImpl, closure = fal
           return `${declarationType} ${name} = ${visit(value)};`;
         }
       }
+    }
+    if (value === void 0 || value === "__undefined__" || typeof value === "object" && value !== null && Object.keys(value).length === 0) {
+      return `${declarationType} ${name}`;
     }
     return `${declarationType} ${name} = ${visit(value)}`;
   });
@@ -3394,6 +3565,34 @@ function visitTryCatch(operands, visit, jsonImpl, closure = false) {
 }
 function visitOperator(op, operands, visit, jsonImpl, closure = false) {
   switch (op) {
+    case "-":
+    case "+":
+    case "!":
+    case "~":
+    case "typeof":
+    case "void":
+    case "delete":
+      if (Array.isArray(operands)) {
+        break;
+      } else if (typeof operands !== "undefined") {
+        return `${op}${visit(operands)}`;
+      }
+      break;
+    case "++":
+    case "--":
+      if (typeof operands !== "undefined") {
+        return `${op}${visit(operands)}`;
+      }
+      break;
+    case "++postfix":
+    case "--postfix":
+      const actualOp = op.substring(0, 2);
+      if (typeof operands !== "undefined") {
+        return `${visit(operands)}${actualOp}`;
+      }
+      break;
+  }
+  switch (op) {
     case "[":
       if (Array.isArray(operands)) {
         const elements = operands.map((operand) => visit(operand)).join(", ");
@@ -3403,7 +3602,6 @@ function visitOperator(op, operands, visit, jsonImpl, closure = false) {
     case "(":
       return `(${visit(operands)})`;
     case "+":
-    case "-":
     case "*":
     case "/":
     case "%":
@@ -3417,6 +3615,12 @@ function visitOperator(op, operands, visit, jsonImpl, closure = false) {
     case ">=":
     case "&&":
     case "||":
+      if (Array.isArray(operands) && operands.length >= 2) {
+        const operandStrings = operands.map((operand) => visit(operand));
+        return `${operandStrings.join(` ${op} `)}`;
+      }
+      break;
+    case "-":
       if (Array.isArray(operands) && operands.length >= 2) {
         const operandStrings = operands.map((operand) => visit(operand));
         return `${operandStrings.join(` ${op} `)}`;
@@ -3455,12 +3659,6 @@ function visitOperator(op, operands, visit, jsonImpl, closure = false) {
 }`;
     case "await":
       return `await ${visit(operands)}`;
-    case "++":
-    case "--":
-      if (Array.isArray(operands) && operands.length === 1) {
-        return `${op}${visit(operands[0])}`;
-      }
-      return `${visit(operands)}${op}`;
     case "+=":
     case "-=":
     case "*=":
@@ -4210,17 +4408,17 @@ pp$9.strictDirective = function(start) {
   for (; ; ) {
     skipWhiteSpace.lastIndex = start;
     start += skipWhiteSpace.exec(this.input)[0].length;
-    var match = literal$1.exec(this.input.slice(start));
-    if (!match) {
+    var match2 = literal$1.exec(this.input.slice(start));
+    if (!match2) {
       return false;
     }
-    if ((match[1] || match[2]) === "use strict") {
-      skipWhiteSpace.lastIndex = start + match[0].length;
+    if ((match2[1] || match2[2]) === "use strict") {
+      skipWhiteSpace.lastIndex = start + match2[0].length;
       var spaceAfter = skipWhiteSpace.exec(this.input), end = spaceAfter.index + spaceAfter[0].length;
       var next = this.input.charAt(end);
       return next === ";" || next === "}" || lineBreak.test(spaceAfter[0]) && !(/[(`.[+\-/*%<>=,?^&]/.test(next) || next === "!" && this.input.charAt(end + 1) === "=");
     }
-    start += match[0].length;
+    start += match2[0].length;
     skipWhiteSpace.lastIndex = start;
     start += skipWhiteSpace.exec(this.input)[0].length;
     if (this.input[start] === ";") {
@@ -10072,17 +10270,17 @@ function requireAcorn() {
         for (; ; ) {
           skipWhiteSpace2.lastIndex = start;
           start += skipWhiteSpace2.exec(this.input)[0].length;
-          var match = literal2.exec(this.input.slice(start));
-          if (!match) {
+          var match2 = literal2.exec(this.input.slice(start));
+          if (!match2) {
             return false;
           }
-          if ((match[1] || match[2]) === "use strict") {
-            skipWhiteSpace2.lastIndex = start + match[0].length;
+          if ((match2[1] || match2[2]) === "use strict") {
+            skipWhiteSpace2.lastIndex = start + match2[0].length;
             var spaceAfter = skipWhiteSpace2.exec(this.input), end = spaceAfter.index + spaceAfter[0].length;
             var next = this.input.charAt(end);
             return next === ";" || next === "}" || lineBreak2.test(spaceAfter[0]) && !(/[(`.[+\-/*%<>=,?^&]/.test(next) || next === "!" && this.input.charAt(end + 1) === "=");
           }
-          start += match[0].length;
+          start += match2[0].length;
           skipWhiteSpace2.lastIndex = start;
           start += skipWhiteSpace2.exec(this.input)[0].length;
           if (this.input[start] === ";") {
@@ -15784,7 +15982,7 @@ function visitVariableDeclaration(node, options2) {
   const declarations = {};
   for (const decl of node.declarations) {
     if (decl.id.type === "Identifier") {
-      declarations[decl.id.name] = decl.init ? ast2jeon(decl.init, options2) : null;
+      declarations[decl.id.name] = decl.init ? ast2jeon(decl.init, options2) : "__undefined__";
     }
   }
   return {
@@ -16466,6 +16664,418 @@ function js2jeon(code, options2) {
     console.error("Error parsing JavaScript/JavaScript code:", error);
     throw error;
   }
+}
+const safeContext = Object.freeze({
+  // Safe Math operations
+  Math: Object.freeze(Math),
+  // Safe type checking and conversion
+  Number,
+  String,
+  Boolean,
+  Array,
+  Object,
+  Date,
+  // Safe utility functions
+  isNaN,
+  isFinite,
+  parseInt,
+  parseFloat,
+  // Safe JSON operations
+  JSON: Object.freeze(JSON),
+  // Safe constants
+  undefined: void 0,
+  null: null,
+  true: true,
+  false: false,
+  Infinity: Infinity,
+  NaN: NaN,
+  console: Object.freeze(console)
+});
+function evalJeon(jeon, context2 = {}) {
+  if (typeof jeon === "string") {
+    if (jeon.startsWith("@")) {
+      const cleanName = jeon.substring(1);
+      if (cleanName.includes(".")) {
+        throw new Error(`Invalid reference '${jeon}': member access shortcuts not allowed. Use explicit '.' operator: { ".": ["@${cleanName.split(".")[0]}", ...] }`);
+      }
+      return context2[cleanName] ?? safeContext[cleanName];
+    }
+    return jeon;
+  }
+  if (typeof jeon === "number" || typeof jeon === "boolean" || jeon === null) {
+    return jeon;
+  }
+  if (Array.isArray(jeon)) {
+    for (let i = 0; i < jeon.length; i++) {
+      const item = jeon[i];
+      const result = evalJeon(item, context2);
+      if (item && typeof item === "object" && !Array.isArray(item) && item["return"] !== void 0) {
+        return result;
+      }
+      if (i === jeon.length - 1) {
+        return result;
+      }
+    }
+    return void 0;
+  }
+  if (typeof jeon === "object" && jeon !== null) {
+    const keys = Object.keys(jeon);
+    if (keys.length === 0) {
+      return {};
+    }
+    if (keys.length === 1) {
+      const op = keys[0];
+      const operands = jeon[op];
+      switch (op) {
+        case "-":
+          if (Array.isArray(operands)) {
+            if (operands.length === 1) {
+              return -evalJeon(operands[0], context2);
+            } else if (operands.length >= 2) {
+              return operands.slice(1).reduce(
+                (acc, curr) => acc - evalJeon(curr, context2),
+                evalJeon(operands[0], context2)
+              );
+            }
+          } else if (operands !== void 0) {
+            return -evalJeon(operands, context2);
+          }
+          break;
+        case "+":
+          if (Array.isArray(operands)) {
+            if (operands.length === 1) {
+              return +evalJeon(operands[0], context2);
+            } else if (operands.length >= 2) {
+              return operands.reduce(
+                (acc, curr) => evalJeon(acc, context2) + evalJeon(curr, context2)
+              );
+            }
+          } else if (operands !== void 0) {
+            return +evalJeon(operands, context2);
+          }
+          break;
+        case "*":
+          if (Array.isArray(operands) && operands.length >= 2) {
+            return operands.reduce(
+              (acc, curr) => evalJeon(acc, context2) * evalJeon(curr, context2)
+            );
+          }
+          break;
+        case "/":
+          if (Array.isArray(operands) && operands.length >= 2) {
+            return operands.slice(1).reduce(
+              (acc, curr) => acc / evalJeon(curr, context2),
+              evalJeon(operands[0], context2)
+            );
+          }
+          break;
+        case "%":
+          if (Array.isArray(operands) && operands.length >= 2) {
+            return operands.slice(1).reduce(
+              (acc, curr) => acc % evalJeon(curr, context2),
+              evalJeon(operands[0], context2)
+            );
+          }
+          break;
+        case "==":
+          if (Array.isArray(operands) && operands.length === 2) {
+            return evalJeon(operands[0], context2) == evalJeon(operands[1], context2);
+          }
+          break;
+        case "===":
+          if (Array.isArray(operands) && operands.length === 2) {
+            return evalJeon(operands[0], context2) === evalJeon(operands[1], context2);
+          }
+          break;
+        case "!=":
+          if (Array.isArray(operands) && operands.length === 2) {
+            return evalJeon(operands[0], context2) != evalJeon(operands[1], context2);
+          }
+          break;
+        case "!==":
+          if (Array.isArray(operands) && operands.length === 2) {
+            return evalJeon(operands[0], context2) !== evalJeon(operands[1], context2);
+          }
+          break;
+        case "<":
+          if (Array.isArray(operands) && operands.length === 2) {
+            return evalJeon(operands[0], context2) < evalJeon(operands[1], context2);
+          }
+          break;
+        case ">":
+          if (Array.isArray(operands) && operands.length === 2) {
+            return evalJeon(operands[0], context2) > evalJeon(operands[1], context2);
+          }
+          break;
+        case "<=":
+          if (Array.isArray(operands) && operands.length === 2) {
+            return evalJeon(operands[0], context2) <= evalJeon(operands[1], context2);
+          }
+          break;
+        case ">=":
+          if (Array.isArray(operands) && operands.length === 2) {
+            return evalJeon(operands[0], context2) >= evalJeon(operands[1], context2);
+          }
+          break;
+        case "&&":
+          if (Array.isArray(operands) && operands.length >= 2) {
+            return operands.every((operand) => evalJeon(operand, context2));
+          }
+          break;
+        case "||":
+          if (Array.isArray(operands) && operands.length >= 2) {
+            return operands.some((operand) => evalJeon(operand, context2));
+          }
+          break;
+        case "!":
+          if (operands !== void 0) {
+            return !evalJeon(operands, context2);
+          }
+          break;
+        case "~":
+          if (operands !== void 0) {
+            return ~evalJeon(operands, context2);
+          }
+          break;
+        case "typeof":
+          if (operands !== void 0) {
+            return typeof evalJeon(operands, context2);
+          }
+          break;
+        case "(":
+          return evalJeon(operands, context2);
+        case "?":
+          if (Array.isArray(operands) && operands.length === 3) {
+            const condition = evalJeon(operands[0], context2);
+            return condition ? evalJeon(operands[1], context2) : evalJeon(operands[2], context2);
+          }
+          break;
+        // Handle function calls
+        case "()":
+          if (Array.isArray(operands) && operands.length >= 1) {
+            const funcRef = evalJeon(operands[0], context2);
+            const args = operands.slice(1).map((arg) => evalJeon(arg, context2));
+            if (typeof funcRef === "function") {
+              return funcRef(...args);
+            }
+            if (funcRef && typeof funcRef === "object" && "call" in funcRef) {
+              return funcRef.call(null, ...args);
+            } else {
+              const funcName = jeon2js(operands[0]);
+              throw new Error(`Cannot call non-function '${funcName}': ${typeof funcRef === "object" ? "object" : funcRef}`);
+            }
+          }
+          break;
+        // Handle property access
+        case ".":
+          if (Array.isArray(operands) && operands.length >= 2) {
+            const obj = evalJeon(operands[0], context2);
+            let result2 = obj;
+            for (let i = 1; i < operands.length; i++) {
+              const prop = evalJeon(operands[i], context2);
+              if (result2 && typeof result2 === "object" && prop in result2) {
+                result2 = result2[prop];
+              } else {
+                return void 0;
+              }
+            }
+            return result2;
+          }
+          break;
+        // Handle new operator
+        case "new":
+          if (Array.isArray(operands) && operands.length >= 1) {
+            const constructor = evalJeon(operands[0], context2);
+            const args = operands.slice(1).map((arg) => evalJeon(arg, context2));
+            if (args.length === 0) {
+              return new constructor();
+            } else if (args.length === 1) {
+              return new constructor(args[0]);
+            } else {
+              const argsArray = [null, ...args];
+              return new Function.prototype.bind(constructor, ...argsArray)();
+            }
+          }
+          break;
+        // Handle spread operator
+        case "...":
+          return evalJeon(operands, context2);
+        // Handle function declarations
+        case "function":
+          return function() {
+            return void 0;
+          };
+        // Handle async function declarations
+        case "async function":
+          return async function() {
+            return void 0;
+          };
+        // Handle arrow functions
+        case "=>":
+          return function() {
+            return void 0;
+          };
+        // Handle variable assignment
+        case "=":
+          if (Array.isArray(operands) && operands.length === 2) {
+            const varNameExpr = operands[0];
+            const value = evalJeon(operands[1], context2);
+            let varName;
+            if (typeof varNameExpr === "string" && varNameExpr.startsWith("@")) {
+              varName = varNameExpr.substring(1);
+            } else {
+              varName = evalJeon(varNameExpr, context2);
+            }
+            if (varName.includes(".")) {
+              throw new Error(`Invalid assignment target '@${varName}': member access shortcuts not allowed. Use explicit '.' operator: { ".": ["@${varName.split(".")[0]}", ...] }`);
+            }
+            context2[varName] = value;
+            return value;
+          }
+          break;
+        // Handle return statement
+        case "return":
+          return evalJeon(operands, context2);
+        // Handle if statements
+        case "if":
+          if (Array.isArray(operands) && (operands.length === 2 || operands.length === 3)) {
+            const condition = evalJeon(operands[0], context2);
+            if (condition) {
+              return evalJeon(operands[1], context2);
+            } else if (operands.length === 3) {
+              return evalJeon(operands[2], context2);
+            }
+          }
+          break;
+        // Handle while loops
+        case "while":
+          if (Array.isArray(operands) && operands.length === 2) {
+            let result2;
+            while (evalJeon(operands[0], context2)) {
+              result2 = evalJeon(operands[1], context2);
+            }
+            return result2;
+          }
+          break;
+        // Handle for loops
+        case "for":
+          if (Array.isArray(operands) && operands.length === 4) {
+            evalJeon(operands[0], context2);
+            let result2;
+            while (evalJeon(operands[1], context2)) {
+              result2 = evalJeon(operands[3], context2);
+              evalJeon(operands[2], context2);
+            }
+            return result2;
+          }
+          break;
+      }
+    }
+    const arrowFunctionKey = keys.find((key2) => key2.includes("=>"));
+    if (arrowFunctionKey) {
+      const paramMatch = arrowFunctionKey.match(/\(([^)]*)\)/);
+      const params = paramMatch ? paramMatch[1].split(",").map((p) => p.trim()).filter((p) => p) : [];
+      const body = jeon[arrowFunctionKey];
+      return function(...args) {
+        const functionContext = { ...context2 };
+        params.forEach((param, index) => {
+          functionContext[param] = args[index];
+        });
+        return evalJeon(body, functionContext);
+      };
+    }
+    const functionDeclarationKey = keys.find((key2) => key2.startsWith("function "));
+    if (functionDeclarationKey) {
+      const nameMatch = functionDeclarationKey.match(/function (\w+)\(([^)]*)\)/);
+      if (nameMatch) {
+        nameMatch[1];
+        const paramStr = nameMatch[2];
+        const params = paramStr ? paramStr.split(",").map((p) => p.trim()).filter((p) => p) : [];
+        const body = jeon[functionDeclarationKey];
+        return function(...args) {
+          const functionContext = { ...context2 };
+          params.forEach((param, index) => {
+            functionContext[param] = args[index];
+          });
+          if (Array.isArray(body)) {
+            let result2;
+            for (const stmt of body) {
+              result2 = evalJeon(stmt, functionContext);
+              if (stmt && typeof stmt === "object" && !Array.isArray(stmt) && stmt["return"] !== void 0) {
+                return result2;
+              }
+            }
+            return result2;
+          } else {
+            return evalJeon(body, functionContext);
+          }
+        };
+      }
+    }
+    const asyncFunctionDeclarationKey = keys.find((key2) => key2.startsWith("async function "));
+    if (asyncFunctionDeclarationKey) {
+      const nameMatch = asyncFunctionDeclarationKey.match(/async function (\w+)\(([^)]*)\)/);
+      if (nameMatch) {
+        nameMatch[1];
+        const paramStr = nameMatch[2];
+        const params = paramStr ? paramStr.split(",").map((p) => p.trim()).filter((p) => p) : [];
+        const body = jeon[asyncFunctionDeclarationKey];
+        return async function(...args) {
+          const functionContext = { ...context2 };
+          params.forEach((param, index) => {
+            functionContext[param] = args[index];
+          });
+          if (Array.isArray(body)) {
+            let result2;
+            for (const stmt of body) {
+              result2 = evalJeon(stmt, functionContext);
+              if (stmt && typeof stmt === "object" && !Array.isArray(stmt) && stmt["return"] !== void 0) {
+                return result2;
+              }
+            }
+            return result2;
+          } else {
+            return evalJeon(body, functionContext);
+          }
+        };
+      }
+    }
+    if (keys.length === 1 && keys[0] === "[") {
+      const arrayItems = jeon["["];
+      if (Array.isArray(arrayItems)) {
+        const result2 = [];
+        for (const item of arrayItems) {
+          if (typeof item === "object" && item !== null && !Array.isArray(item) && "..." in item) {
+            const spreadValue = evalJeon(item["..."], context2);
+            if (Array.isArray(spreadValue)) {
+              result2.push(...spreadValue);
+            } else {
+              result2.push(spreadValue);
+            }
+          } else {
+            result2.push(evalJeon(item, context2));
+          }
+        }
+        return result2;
+      }
+    }
+    if (keys.length === 1 && (keys[0] === "@" || keys[0] === "@@")) {
+      const declarations = jeon[keys[0]];
+      if (typeof declarations === "object" && declarations !== null) {
+        for (const [varName, valueExpr] of Object.entries(declarations)) {
+          const value = valueExpr === "__undefined__" ? void 0 : evalJeon(valueExpr, context2);
+          context2[varName] = value;
+        }
+      }
+      return void 0;
+    }
+    const result = {};
+    for (const key2 of keys) {
+      result[key2] = evalJeon(jeon[key2], context2);
+    }
+    return result;
+  }
+  return jeon;
 }
 var Space_Separator = /[\u1680\u2000-\u200A\u202F\u205F\u3000]/;
 var ID_Start = /[\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u0860-\u086A\u08A0-\u08B4\u08B6-\u08BD\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u09FC\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C60\u0C61\u0C80\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D54-\u0D56\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u1884\u1887-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1C80-\u1C88\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2E2F\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303C\u3041-\u3096\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312E\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FEA\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA69D\uA6A0-\uA6EF\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AE\uA7B0-\uA7B7\uA7F7-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF2D-\uDF4A\uDF50-\uDF75\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD801[\uDC00-\uDC9D\uDCB0-\uDCD3\uDCD8-\uDCFB\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00\uDE10-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD804[\uDC03-\uDC37\uDC83-\uDCAF\uDCD0-\uDCE8\uDD03-\uDD26\uDD50-\uDD72\uDD76\uDD83-\uDDB2\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE2B\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEDE\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D\uDF50\uDF5D-\uDF61]|\uD805[\uDC00-\uDC34\uDC47-\uDC4A\uDC80-\uDCAF\uDCC4\uDCC5\uDCC7\uDD80-\uDDAE\uDDD8-\uDDDB\uDE00-\uDE2F\uDE44\uDE80-\uDEAA\uDF00-\uDF19]|\uD806[\uDCA0-\uDCDF\uDCFF\uDE00\uDE0B-\uDE32\uDE3A\uDE50\uDE5C-\uDE83\uDE86-\uDE89\uDEC0-\uDEF8]|\uD807[\uDC00-\uDC08\uDC0A-\uDC2E\uDC40\uDC72-\uDC8F\uDD00-\uDD06\uDD08\uDD09\uDD0B-\uDD30\uDD46]|\uD808[\uDC00-\uDF99]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|[\uD80C\uD81C-\uD820\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872\uD874-\uD879][\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]|\uD811[\uDC00-\uDE46]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF2F\uDF40-\uDF43\uDF63-\uDF77\uDF7D-\uDF8F]|\uD81B[\uDF00-\uDF44\uDF50\uDF93-\uDF9F\uDFE0\uDFE1]|\uD821[\uDC00-\uDFEC]|\uD822[\uDC00-\uDEF2]|\uD82C[\uDC00-\uDD1E\uDD70-\uDEFB]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB]|\uD83A[\uDC00-\uDCC4\uDD00-\uDD43]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1\uDEB0-\uDFFF]|\uD87A[\uDC00-\uDFE0]|\uD87E[\uDC00-\uDE1D]/;
@@ -17556,14 +18166,6 @@ function requirePrism() {
   hasRequiredPrism = 1;
   (function(module) {
     var _self = typeof window !== "undefined" ? window : typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope ? self : {};
-    /**
-     * Prism: Lightweight, robust, elegant syntax highlighting
-     *
-     * @license MIT <https://opensource.org/licenses/MIT>
-     * @author Lea Verou <https://lea.verou.me>
-     * @namespace
-     * @public
-     */
     var Prism2 = (function(_self2) {
       var lang = /(?:^|\s)lang(?:uage)?-([\w-]+)(?=\s|$)/i;
       var uniqueId = 0;
@@ -18266,13 +18868,13 @@ function requirePrism() {
       };
       function matchPattern(pattern, pos2, text, lookbehind) {
         pattern.lastIndex = pos2;
-        var match = pattern.exec(text);
-        if (match && lookbehind && match[1]) {
-          var lookbehindLength = match[1].length;
-          match.index += lookbehindLength;
-          match[0] = match[0].slice(lookbehindLength);
+        var match2 = pattern.exec(text);
+        if (match2 && lookbehind && match2[1]) {
+          var lookbehindLength = match2[1].length;
+          match2.index += lookbehindLength;
+          match2[0] = match2[0].slice(lookbehindLength);
         }
-        return match;
+        return match2;
       }
       function matchGrammar(text, tokenList, grammar, startNode, startPos, rematch) {
         for (var token2 in grammar) {
@@ -18307,14 +18909,14 @@ function requirePrism() {
                 continue;
               }
               var removeCount = 1;
-              var match;
+              var match2;
               if (greedy) {
-                match = matchPattern(pattern, pos2, text, lookbehind);
-                if (!match || match.index >= text.length) {
+                match2 = matchPattern(pattern, pos2, text, lookbehind);
+                if (!match2 || match2.index >= text.length) {
                   break;
                 }
-                var from = match.index;
-                var to = match.index + match[0].length;
+                var from = match2.index;
+                var to = match2.index + match2[0].length;
                 var p = pos2;
                 p += currentNode.value.length;
                 while (from >= p) {
@@ -18332,15 +18934,15 @@ function requirePrism() {
                 }
                 removeCount--;
                 str = text.slice(pos2, p);
-                match.index -= pos2;
+                match2.index -= pos2;
               } else {
-                match = matchPattern(pattern, 0, str, lookbehind);
-                if (!match) {
+                match2 = matchPattern(pattern, 0, str, lookbehind);
+                if (!match2) {
                   continue;
                 }
               }
-              var from = match.index;
-              var matchStr = match[0];
+              var from = match2.index;
+              var matchStr = match2[0];
               var before = str.slice(0, from);
               var after = str.slice(from + matchStr.length);
               var reach = pos2 + str.length;
@@ -19186,6 +19788,8 @@ const App = () => {
   const jeonOutput = observable("");
   const useJSON5 = observable(false);
   const useClosure = observable(false);
+  const evalResult = observable("");
+  const evalContext = observable("{}");
   const jeonInputRef = observable(null);
   const jsInputRef = observable(null);
   const tsOutputCodeRef = observable(null);
@@ -19564,6 +20168,79 @@ const App = () => {
       console.error("Failed to read clipboard contents: ", err);
     }
   };
+  const paste = () => /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", width: "16px", height: "16px", viewBox: "0 0 24 24", fill: "none", children: /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", "clip-rule": "evenodd", d: "M12 0C11.2347 0 10.6293 0.125708 10.1567 0.359214C9.9845 0.44429 9.82065 0.544674 9.68861 0.62717L9.59036 0.688808C9.49144 0.751003 9.4082 0.803334 9.32081 0.853848C9.09464 0.984584 9.00895 0.998492 9.00053 0.999859C8.99983 0.999973 9.00019 0.999859 9.00053 0.999859C7.89596 0.999859 7 1.89543 7 3H6C4.34315 3 3 4.34315 3 6V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V6C21 4.34315 19.6569 3 18 3H17C17 1.89543 16.1046 1 15 1C15.0003 1 15.0007 1.00011 15 1C14.9916 0.998633 14.9054 0.984584 14.6792 0.853848C14.5918 0.80333 14.5086 0.751004 14.4096 0.688804L14.3114 0.62717C14.1793 0.544674 14.0155 0.44429 13.8433 0.359214C13.3707 0.125708 12.7653 0 12 0ZM16.7324 5C16.3866 5.5978 15.7403 6 15 6H9C8.25972 6 7.61337 5.5978 7.26756 5H6C5.44772 5 5 5.44772 5 6V20C5 20.5523 5.44772 21 6 21H18C18.5523 21 19 20.5523 19 20V6C19 5.44772 18.5523 5 18 5H16.7324ZM11.0426 2.15229C11.1626 2.09301 11.4425 2 12 2C12.5575 2 12.8374 2.09301 12.9574 2.15229C13.0328 2.18953 13.1236 2.24334 13.2516 2.32333L13.3261 2.37008C13.43 2.43542 13.5553 2.51428 13.6783 2.58539C13.9712 2.75469 14.4433 3 15 3V4H9V3C9.55666 3 10.0288 2.75469 10.3217 2.58539C10.4447 2.51428 10.57 2.43543 10.6739 2.37008L10.7484 2.32333C10.8764 2.24334 10.9672 2.18953 11.0426 2.15229Z", fill: "#0F0F0F" }) });
+  const copy = () => /* @__PURE__ */ jsxs("svg", { xmlns: "http://www.w3.org/2000/svg", width: "16px", height: "16px", viewBox: "0 0 24 24", fill: "none", children: [
+    /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", "clip-rule": "evenodd", d: "M21 8C21 6.34315 19.6569 5 18 5H10C8.34315 5 7 6.34315 7 8V20C7 21.6569 8.34315 23 10 23H18C19.6569 23 21 21.6569 21 20V8ZM19 8C19 7.44772 18.5523 7 18 7H10C9.44772 7 9 7.44772 9 8V20C9 20.5523 9.44772 21 10 21H18C18.5523 21 19 20.5523 19 20V8Z", fill: "#0F0F0F" }),
+    /* @__PURE__ */ jsx$1("path", { d: "M6 3H16C16.5523 3 17 2.55228 17 2C17 1.44772 16.5523 1 16 1H6C4.34315 1 3 2.34315 3 4V18C3 18.5523 3.44772 19 4 19C4.55228 19 5 18.5523 5 18V4C5 3.44772 5.44772 3 6 3Z", fill: "#0F0F0F" })
+  ] });
+  const evaluateJsOutput = () => {
+    try {
+      const jsCode = get(jsOutput);
+      if (!jsCode || jsCode.startsWith("Error:")) {
+        evalResult("Error: No valid JavaScript output to evaluate");
+        return;
+      }
+      const refElement = get(jeonInputRef);
+      const jeonText = refElement ? refElement.textContent || refElement.innerText : "";
+      if (!jeonText) {
+        evalResult("Error: No JEON input found");
+        return;
+      }
+      const jeon = useJSON5() ? lib.parse(jeonText) : JSON.parse(jeonText);
+      let context2 = {};
+      try {
+        const contextText = get(evalContext);
+        context2 = contextText ? useJSON5() ? lib.parse(contextText) : JSON.parse(contextText) : {};
+      } catch (contextError) {
+        evalResult("Error: Invalid context JSON");
+        return;
+      }
+      let result = evalJeon(jeon, context2);
+      if (typeof result === "function") {
+        const jeonKeys = Object.keys(jeon);
+        const funcKey = jeonKeys.find((key2) => key2.includes("=>"));
+        if (funcKey) {
+          const paramMatch = funcKey.match(/\(([^)]*)\)/);
+          const params = paramMatch ? paramMatch[1].split(",").map((p) => p.trim()).filter((p) => p) : [];
+          const args = params.map((param) => {
+            if (context2.hasOwnProperty(param)) {
+              return context2[param];
+            }
+            switch (param) {
+              case "a":
+                return 1;
+              case "b":
+                return 2;
+              case "c":
+                return 3;
+              case "x":
+                return 1;
+              case "y":
+                return 2;
+              case "z":
+                return 3;
+              default:
+                return void 0;
+            }
+          });
+          result = result(...args);
+        } else {
+          try {
+            result = result(1, 2, 3);
+          } catch (e) {
+            try {
+              result = result();
+            } catch (e2) {
+            }
+          }
+        }
+      }
+      evalResult(JSON.stringify(result, null, 2));
+    } catch (error) {
+      console.error("evalJeon error:", error);
+      evalResult(`Error: ${error.message}`);
+    }
+  };
   return /* @__PURE__ */ jsx$1("div", { class: "max-w-6xl mx-auto p-5 bg-gray-800 text-white", children: /* @__PURE__ */ jsxs("div", { class: "bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800", children: [
     /* @__PURE__ */ jsx$1("h1", { class: "text-3xl font-bold text-center text-gray-800 mb-4", children: "JEON Converter Demo" }),
     /* @__PURE__ */ jsx$1("p", { class: "text-center text-gray-600 mb-8", children: "A bidirectional converter between JEON (JSON-based Executable Object Notation) and JavaScript/JavaScript." }),
@@ -19607,7 +20284,8 @@ const App = () => {
                   copyToClipboard(currentValue);
                 },
                 class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
-                title: "Copy"
+                title: "Copy",
+                children: copy()
               }
             ),
             /* @__PURE__ */ jsx$1(
@@ -19618,10 +20296,7 @@ const App = () => {
                 },
                 class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
                 title: "Paste",
-                children: /* @__PURE__ */ jsxs("svg", { xmlns: "http://www.w3.org/2000/svg", width: "800px", height: "800px", viewBox: "0 0 16 16", fill: "none", children: [
-                  /* @__PURE__ */ jsx$1("path", { d: "M0 0H10V4H4V10H0V0Z", fill: "#000000" }),
-                  /* @__PURE__ */ jsx$1("path", { d: "M16 6H6V16H16V6Z", fill: "#000000" })
-                ] })
+                children: paste()
               }
             )
           ] })
@@ -19659,7 +20334,7 @@ const App = () => {
                 },
                 class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
                 title: "Copy",
-                children: /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-[1em] w-[1em]", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { d: "M8 3a1 1 0 000 2h4a1 1 0 100-2H8zM6 7a1 1 0 000 2h8a1 1 0 100-2H6zm-2 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zm0 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" }) })
+                children: copy()
               }
             ),
             /* @__PURE__ */ jsx$1(
@@ -19670,7 +20345,7 @@ const App = () => {
                 },
                 class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
                 title: "Paste",
-                children: /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", d: "M7 2a1 1 0 00-.707 1.707L7 4.414v3.758a1 1 0 002 0V4.414l.707-.707A1 1 0 007 2zm5 4a1 1 0 00-1 1v8a1 1 0 001 1h4a1 1 0 001-1V7a1 1 0 00-1-1h-4zm-1 2a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1V8z", "clip-rule": "evenodd" }) })
+                children: paste()
               }
             )
           ] })
@@ -19705,7 +20380,7 @@ const App = () => {
               onClick: () => copyToClipboard(get(jsOutput)),
               class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
               title: "Copy",
-              children: /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { d: "M8 3a1 1 0 000 2h4a1 1 0 100-2H8zM6 7a1 1 0 000 2h8a1 1 0 100-2H6zm-2 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zm0 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" }) })
+              children: copy()
             }
           )
         ] }),
@@ -19716,7 +20391,49 @@ const App = () => {
             class: "w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto",
             children: /* @__PURE__ */ jsx$1("code", { ref: tsOutputCodeRef, id: "ts-output-code" })
           }
-        )
+        ),
+        /* @__PURE__ */ jsx$1(If, { when: () => get(useClosure), children: /* @__PURE__ */ jsxs("div", { class: "mt-4 p-4 bg-green-50 rounded-lg border border-green-200", children: [
+          /* @__PURE__ */ jsxs(
+            "button",
+            {
+              onClick: evaluateJsOutput,
+              class: "w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 ease-in-out shadow-md hover:shadow-lg flex items-center justify-center",
+              children: [
+                /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-5 w-5 mr-2", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", d: "M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z", "clip-rule": "evenodd" }) }),
+                "Evaluate with evalJeon"
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxs("div", { class: "mt-4", children: [
+            /* @__PURE__ */ jsxs("label", { class: "block text-sm font-semibold text-green-800 mb-2 flex items-center", children: [
+              /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4 mr-1", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { d: "M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" }) }),
+              "Evaluation Context (JSON/JSON5):"
+            ] }),
+            /* @__PURE__ */ jsx$1(
+              "textarea",
+              {
+                value: evalContext,
+                onInput: (e) => evalContext(e.target.value),
+                class: "w-full h-24 font-mono text-sm p-3 border border-green-300 rounded-md bg-white text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200",
+                placeholder: '{"variableName": "value", "anotherVar": 42}'
+              }
+            ),
+            /* @__PURE__ */ jsx$1("p", { class: "mt-1 text-xs text-green-600", children: "Enter JSON context for variable evaluation" })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { class: "mt-4", children: [
+            /* @__PURE__ */ jsxs("label", { class: "block text-sm font-semibold text-green-800 mb-2 flex items-center", children: [
+              /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4 mr-1", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", d: "M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z", "clip-rule": "evenodd" }) }),
+              "Evaluation Result:"
+            ] }),
+            /* @__PURE__ */ jsx$1(
+              "pre",
+              {
+                class: "w-full h-32 font-mono text-sm p-3 border border-green-300 rounded-md bg-green-100 text-green-900 overflow-auto",
+                children: evalResult
+              }
+            )
+          ] })
+        ] }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2 relative", children: [
         /* @__PURE__ */ jsxs("div", { class: "flex justify-between items-center mb-2", children: [
@@ -19727,7 +20444,7 @@ const App = () => {
               onClick: () => copyToClipboard(get(jeonOutput)),
               class: "flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded",
               title: "Copy",
-              children: /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { d: "M8 3a1 1 0 000 2h4a1 1 0 100-2H8zM6 7a1 1 0 000 2h8a1 1 0 100-2H6zm-2 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zm0 4a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" }) })
+              children: copy()
             }
           )
         ] }),
@@ -19910,4 +20627,4 @@ effect(() => {
   initCollapsible();
 });
 render(/* @__PURE__ */ jsx$1(App, {}), document.getElementById("app"));
-//# sourceMappingURL=index-D5c091f1.js.map
+//# sourceMappingURL=index-DTDpcwaa.js.map

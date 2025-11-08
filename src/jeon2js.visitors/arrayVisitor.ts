@@ -24,6 +24,14 @@ export function visitArray(jeon: any[], visit: (item: any) => string, jsonImpl?:
         // Handle sequencing blocks
         const statementResults = jeon.map(expr => {
             const result = visit(expr)
+            // Handle empty statements - already a semicolon, don't add another
+            if (result === ';') {
+                return ';'
+            }
+            // Don't add semicolons to function declarations or variable declarations
+            if (result.trim().startsWith('function') || result.trim().startsWith('const ') || result.trim().startsWith('let ') || result.trim().startsWith('var ')) {
+                return result
+            }
             // Add semicolon if it doesn't already end with one
             return result.endsWith(';') ? result : result + ';'
         })

@@ -31,7 +31,7 @@ export function visitFunctionDeclaration(keys: string[], jeon: any, visit: (item
 
             const params = paramStr ? paramStr.split(',').map((p: string) => p.trim()).filter((p: string) => p) : []
             const body = jeon[key]
-            const bodyStr = Array.isArray(body) ? body.map((stmt: any) => visit(stmt)).join(';\n  ') : visit(body)
+            const bodyStr = Array.isArray(body) ? body.map((stmt: any) => visit(stmt)).join('\n  ') : visit(body)
 
             // If closure mode is enabled, wrap the function in evalJeon
             if (closure) {

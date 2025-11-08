@@ -498,13 +498,17 @@ const App = () => {
     }
   }
 
-  const paste = <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none">
-    <path fill-rule="evenodd" clip-rule="evenodd" d="M12 0C11.2347 0 10.6293 0.125708 10.1567 0.359214C9.9845 0.44429 9.82065 0.544674 9.68861 0.62717L9.59036 0.688808C9.49144 0.751003 9.4082 0.803334 9.32081 0.853848C9.09464 0.984584 9.00895 0.998492 9.00053 0.999859C8.99983 0.999973 9.00019 0.999859 9.00053 0.999859C7.89596 0.999859 7 1.89543 7 3H6C4.34315 3 3 4.34315 3 6V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V6C21 4.34315 19.6569 3 18 3H17C17 1.89543 16.1046 1 15 1C15.0003 1 15.0007 1.00011 15 1C14.9916 0.998633 14.9054 0.984584 14.6792 0.853848C14.5918 0.80333 14.5086 0.751004 14.4096 0.688804L14.3114 0.62717C14.1793 0.544674 14.0155 0.44429 13.8433 0.359214C13.3707 0.125708 12.7653 0 12 0ZM16.7324 5C16.3866 5.5978 15.7403 6 15 6H9C8.25972 6 7.61337 5.5978 7.26756 5H6C5.44772 5 5 5.44772 5 6V20C5 20.5523 5.44772 21 6 21H18C18.5523 21 19 20.5523 19 20V6C19 5.44772 18.5523 5 18 5H16.7324ZM11.0426 2.15229C11.1626 2.09301 11.4425 2 12 2C12.5575 2 12.8374 2.09301 12.9574 2.15229C13.0328 2.18953 13.1236 2.24334 13.2516 2.32333L13.3261 2.37008C13.43 2.43542 13.5553 2.51428 13.6783 2.58539C13.9712 2.75469 14.4433 3 15 3V4H9V3C9.55666 3 10.0288 2.75469 10.3217 2.58539C10.4447 2.51428 10.57 2.43543 10.6739 2.37008L10.7484 2.32333C10.8764 2.24334 10.9672 2.18953 11.0426 2.15229Z" fill="#0F0F0F" />
-  </svg>
-  const copy = <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none">
-    <path fill-rule="evenodd" clip-rule="evenodd" d="M21 8C21 6.34315 19.6569 5 18 5H10C8.34315 5 7 6.34315 7 8V20C7 21.6569 8.34315 23 10 23H18C19.6569 23 21 21.6569 21 20V8ZM19 8C19 7.44772 18.5523 7 18 7H10C9.44772 7 9 7.44772 9 8V20C9 20.5523 9.44772 21 10 21H18C18.5523 21 19 20.5523 19 20V8Z" fill="#0F0F0F" />
-    <path d="M6 3H16C16.5523 3 17 2.55228 17 2C17 1.44772 16.5523 1 16 1H6C4.34315 1 3 2.34315 3 4V18C3 18.5523 3.44772 19 4 19C4.55228 19 5 18.5523 5 18V4C5 3.44772 5.44772 3 6 3Z" fill="#0F0F0F" />
-  </svg>
+  const paste = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M12 0C11.2347 0 10.6293 0.125708 10.1567 0.359214C9.9845 0.44429 9.82065 0.544674 9.68861 0.62717L9.59036 0.688808C9.49144 0.751003 9.4082 0.803334 9.32081 0.853848C9.09464 0.984584 9.00895 0.998492 9.00053 0.999859C8.99983 0.999973 9.00019 0.999859 9.00053 0.999859C7.89596 0.999859 7 1.89543 7 3H6C4.34315 3 3 4.34315 3 6V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V6C21 4.34315 19.6569 3 18 3H17C17 1.89543 16.1046 1 15 1C15.0003 1 15.0007 1.00011 15 1C14.9916 0.998633 14.9054 0.984584 14.6792 0.853848C14.5918 0.80333 14.5086 0.751004 14.4096 0.688804L14.3114 0.62717C14.1793 0.544674 14.0155 0.44429 13.8433 0.359214C13.3707 0.125708 12.7653 0 12 0ZM16.7324 5C16.3866 5.5978 15.7403 6 15 6H9C8.25972 6 7.61337 5.5978 7.26756 5H6C5.44772 5 5 5.44772 5 6V20C5 20.5523 5.44772 21 6 21H18C18.5523 21 19 20.5523 19 20V6C19 5.44772 18.5523 5 18 5H16.7324ZM11.0426 2.15229C11.1626 2.09301 11.4425 2 12 2C12.5575 2 12.8374 2.09301 12.9574 2.15229C13.0328 2.18953 13.1236 2.24334 13.2516 2.32333L13.3261 2.37008C13.43 2.43542 13.5553 2.51428 13.6783 2.58539C13.9712 2.75469 14.4433 3 15 3V4H9V3C9.55666 3 10.0288 2.75469 10.3217 2.58539C10.4447 2.51428 10.57 2.43543 10.6739 2.37008L10.7484 2.32333C10.8764 2.24334 10.9672 2.18953 11.0426 2.15229Z" fill="#0F0F0F" />
+    </svg>
+  )
+  const copy = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M21 8C21 6.34315 19.6569 5 18 5H10C8.34315 5 7 6.34315 7 8V20C7 21.6569 8.34315 23 10 23H18C19.6569 23 21 21.6569 21 20V8ZM19 8C19 7.44772 18.5523 7 18 7H10C9.44772 7 9 7.44772 9 8V20C9 20.5523 9.44772 21 10 21H18C18.5523 21 19 20.5523 19 20V8Z" fill="#0F0F0F" />
+      <path d="M6 3H16C16.5523 3 17 2.55228 17 2C17 1.44772 16.5523 1 16 1H6C4.34315 1 3 2.34315 3 4V18C3 18.5523 3.44772 19 4 19C4.55228 19 5 18.5523 5 18V4C5 3.44772 5.44772 3 6 3Z" fill="#0F0F0F" />
+    </svg>
+  )
 
   // Add function to evaluate JavaScript output using evalJeon
   const evaluateJsOutput = () => {
@@ -539,7 +543,54 @@ const App = () => {
       }
 
       // Evaluate using evalJeon with context
-      const result = evalJeon(jeon, context)
+      let result = evalJeon(jeon, context)
+
+      // If the result is a function, we need to call it with appropriate arguments
+      // For now, we'll try to infer arguments from the context or use default values
+      if (typeof result === 'function') {
+        // Try to get function parameter names from the JEON structure
+        const jeonKeys = Object.keys(jeon)
+        const funcKey = jeonKeys.find(key => key.includes('=>'))
+
+        if (funcKey) {
+          // Extract parameter names from the function key
+          const paramMatch = funcKey.match(/\(([^)]*)\)/)
+          const params = paramMatch ? paramMatch[1].split(',').map(p => p.trim()).filter(p => p) : []
+
+          // Create arguments from context or use default values
+          const args = params.map(param => {
+            if (context.hasOwnProperty(param)) {
+              return context[param]
+            }
+            // Default values for common parameter names
+            switch (param) {
+              case 'a': return 1
+              case 'b': return 2
+              case 'c': return 3
+              case 'x': return 1
+              case 'y': return 2
+              case 'z': return 3
+              default: return undefined
+            }
+          })
+
+          // Call the function with the arguments
+          result = result(...args)
+        } else {
+          // For other function types, try calling with some default arguments
+          try {
+            result = result(1, 2, 3) // Try with common arguments
+          } catch (e) {
+            // If that fails, try with no arguments
+            try {
+              result = result()
+            } catch (e2) {
+              // If both fail, keep the function as the result
+            }
+          }
+        }
+      }
+
       evalResult(JSON.stringify(result, null, 2))
     } catch (error: any) {
       console.error('evalJeon error:', error)
@@ -593,7 +644,7 @@ const App = () => {
                   class="flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded"
                   title="Copy"
                 >
-                  {copy}
+                  {copy()}
                 </button>
                 <button
                   onClick={() => {
@@ -602,7 +653,7 @@ const App = () => {
                   class="flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded"
                   title="Paste"
                 >
-                  {paste}
+                  {paste()}
                 </button>
               </div>
             </div>
@@ -633,7 +684,7 @@ const App = () => {
                   class="flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded"
                   title="Copy"
                 >
-                  {copy}
+                  {copy()}
                 </button>
                 <button
                   onClick={() => {
@@ -642,7 +693,7 @@ const App = () => {
                   class="flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded"
                   title="Paste"
                 >
-                  {paste}
+                  {paste()}
                 </button>
               </div>
             </div>
@@ -670,7 +721,7 @@ const App = () => {
                 class="flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded"
                 title="Copy"
               >
-                {copy}
+                {copy()}
               </button>
             </div>
             <pre
@@ -698,7 +749,7 @@ const App = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" />
                     </svg>
-                    Evaluation Context (JSON):
+                    Evaluation Context (JSON/JSON5):
                   </label>
                   <textarea
                     value={evalContext}
@@ -735,7 +786,7 @@ const App = () => {
                 class="flex items-center text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded"
                 title="Copy"
               >
-                {copy}
+                {copy()}
               </button>
             </div>
             <pre

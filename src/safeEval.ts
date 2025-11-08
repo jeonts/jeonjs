@@ -334,9 +334,8 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
 
                 // Handle function declarations
                 case 'function':
-                    // This would be a function declaration, but for evaluation we return a function
-                    // In a real implementation, we would need to parse and create a function
-                    // For now, we'll just return a placeholder
+                    // Function declarations are handled by the special case outside the switch
+                    // This case is for the 'function' operator in expressions
                     return function () { return undefined }
 
                 // Handle async function declarations
@@ -442,6 +441,87 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
             }
         }
 
+        // Check for named function declarations (e.g., "function sum(a,b)")
+        const functionDeclarationKey = keys.find(key => key.startsWith('function '))
+        if (functionDeclarationKey) {
+            // Extract function name and parameters from the key
+            // The key format is like "function name(param1, param2)"
+            const nameMatch = functionDeclarationKey.match(/function (\w+)\(([^)]*)\)/)
+            if (nameMatch) {
+                const funcName = nameMatch[1]
+                const paramStr = nameMatch[2]
+                const params = paramStr ? paramStr.split(',').map(p => p.trim()).filter(p => p) : []
+                const body = (jeon as any)[functionDeclarationKey]
+
+                // Create and return a JavaScript function
+                return function (...args: any[]) {
+                    // Create a new context with the parameters
+                    const functionContext = { ...context }
+                    params.forEach((param, index) => {
+                        functionContext[param] = args[index]
+                    })
+
+                    // Evaluate the function body with the new context
+                    // The body is an array of statements
+                    if (Array.isArray(body)) {
+                        let result
+                        for (const stmt of body) {
+                            result = evalJeon(stmt, functionContext)
+
+                            // If this is a return statement, return its value immediately
+                            if (stmt && typeof stmt === 'object' && !Array.isArray(stmt) && stmt['return'] !== undefined) {
+                                return result
+                            }
+                        }
+                        return result
+                    } else {
+                        // Single statement body
+                        return evalJeon(body, functionContext)
+                    }
+                }
+            }
+        }
+
+        // Check for async function declarations (e.g., "async function fetchData()")
+        const asyncFunctionDeclarationKey = keys.find(key => key.startsWith('async function '))
+        if (asyncFunctionDeclarationKey) {
+            // Extract function name and parameters from the key
+            const nameMatch = asyncFunctionDeclarationKey.match(/async function (\w+)\(([^)]*)\)/)
+            if (nameMatch) {
+                const funcName = nameMatch[1]
+                const paramStr = nameMatch[2]
+                const params = paramStr ? paramStr.split(',').map(p => p.trim()).filter(p => p) : []
+                const body = (jeon as any)[asyncFunctionDeclarationKey]
+
+                // Create and return an async JavaScript function
+                return async function (...args: any[]) {
+                    // Create a new context with the parameters
+                    const functionContext = { ...context }
+                    params.forEach((param, index) => {
+                        functionContext[param] = args[index]
+                    })
+
+                    // Evaluate the function body with the new context
+                    // The body is an array of statements
+                    if (Array.isArray(body)) {
+                        let result
+                        for (const stmt of body) {
+                            result = evalJeon(stmt, functionContext)
+
+                            // If this is a return statement, return its value immediately
+                            if (stmt && typeof stmt === 'object' && !Array.isArray(stmt) && stmt['return'] !== undefined) {
+                                return result
+                            }
+                        }
+                        return result
+                    } else {
+                        // Single statement body
+                        return evalJeon(body, functionContext)
+                    }
+                }
+            }
+        }
+
         // Handle array literals (special case where key is "[")
         if (keys.length === 1 && keys[0] === '[') {
             const arrayItems = (jeon as JeonObject)['[']
@@ -463,6 +543,21 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                 }
                 return result
             }
+        }
+
+        // Handle variable declarations (@ for let/var, @@ for const)
+        if (keys.length === 1 && (keys[0] === '@' || keys[0] === '@@')) {
+            const declarations = (jeon as JeonObject)[keys[0]]
+            if (typeof declarations === 'object' && declarations !== null) {
+                // Process each variable declaration
+                for (const [varName, valueExpr] of Object.entries(declarations)) {
+                    // For uninitialized variables (represented by __undefined__ sentinel), set to undefined
+                    const value = valueExpr === '__undefined__' ? undefined : evalJeon(valueExpr, context)
+                    context[varName] = value
+                }
+            }
+            // Variable declaration statements return undefined in JavaScript
+            return undefined
         }
 
         // Handle object literals

@@ -40,6 +40,7 @@ import { visitYieldExpression } from './yieldExpression'
 import { visitBreakStatement } from './breakStatement'
 import { visitTryStatement } from './tryStatement'
 import { visitParenthesizedExpression } from './parenthesizedExpression'
+import { visitEmptyStatement } from './emptyStatement'
 
 export const visitorRegistry: Record<string, (node: any, options?: { json?: typeof JSON }) => any> = {
     'BinaryExpression': (node, options) => visitBinaryExpression(node, options),
@@ -83,4 +84,5 @@ export const visitorRegistry: Record<string, (node: any, options?: { json?: type
     'BreakStatement': (node, options) => visitBreakStatement(node, options),
     'TryStatement': (node, options) => visitTryStatement(node, options),
     'ParenthesizedExpression': (node, options) => visitParenthesizedExpression(node, options),
+    'EmptyStatement': (node, options) => visitEmptyStatement(node, options),
 }

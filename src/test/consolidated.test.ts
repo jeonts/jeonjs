@@ -168,8 +168,7 @@ test('Spread operator', () => {
     }
     const result = evalJeon(spreadExpr)
     // Spread operator evaluates to the value itself
-    // Since [1, 2, 3] is evaluated as a statement sequence, it returns the last element
-    expect(result).toBe(3)
+    expect(JSON.stringify(result)).toBe(JSON.stringify([1, 2, 3]))
 })
 
 // Test if statement

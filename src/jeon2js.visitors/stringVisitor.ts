@@ -4,6 +4,11 @@
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
  */
 export function visitString(jeon: string, jsonImpl?: typeof JSON): string {
+    // Handle empty statements
+    if (jeon === ';') {
+        return ';'  // Empty statements should produce a semicolon
+    }
+
     // Handle references - no shortcuts allowed, must use explicit '.' operator
     if (jeon.startsWith('@')) {
         const cleanName = jeon.substring(1)

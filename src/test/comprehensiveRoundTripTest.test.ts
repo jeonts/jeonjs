@@ -60,6 +60,10 @@ const testCases = [
     <p>Hello World</p>
   </main>
 </div>;`
+    },
+    {
+        name: 'Function declarations with variable statements',
+        code: `function sum(a, b) {let d;const f = 22;var g;  return a + b;};function min(a, b){return Math.min(a,b)};function main(a, b){return min(sum(a,b))}`
     }
 ]
 
@@ -129,6 +133,16 @@ test('Comprehensive Round-trip Test', () => {
                 expect(regenerated).toContain('<h1>Welcome</h1>')
                 expect(regenerated).toContain('<main>')
                 expect(regenerated).toContain('<p>Hello World</p>')
+            } else if (testCase.name === 'Function declarations with variable statements') {
+                expect(regenerated).toContain('function sum(a, b)')
+                expect(regenerated).toContain('let d')
+                expect(regenerated).toContain('const f = 22')
+                expect(regenerated).toContain('var g')
+                expect(regenerated).toContain('return a + b')
+                expect(regenerated).toContain('function min(a, b)')
+                expect(regenerated).toContain('return Math.min(a, b)')
+                expect(regenerated).toContain('function main(a, b)')
+                expect(regenerated).toContain('return min(sum(a, b))')
             }
 
             // Check for specific issues we've fixed

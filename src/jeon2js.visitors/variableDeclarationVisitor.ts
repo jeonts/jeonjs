@@ -36,6 +36,11 @@ export function visitVariableDeclaration(op: string, operands: any, visit: (item
                 }
             }
         }
+        // Handle uninitialized variables
+        if (value === undefined || value === '__undefined__' || (typeof value === 'object' && value !== null && Object.keys(value).length === 0)) {
+            return `${declarationType} ${name}`
+        }
+
         return `${declarationType} ${name} = ${visit(value)}`
     })
     return declarations.join(';\n')
