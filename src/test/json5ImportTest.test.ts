@@ -1,5 +1,5 @@
 import { expect, test } from '@woby/chk'
-import JSON5 from 'json5'
+import JSON5 from '@mainnet-pat/json5-bigint'
 
 test('JSON5 Import Test', () => {
     test('Tests JSON5 functionality', () => {
@@ -14,7 +14,7 @@ test('JSON5 Import Test', () => {
             console.log('JSON5.parse working:', parsedObj)
 
             console.log('JSON5 import test PASSED')
-            
+
             // Assertions
             expect(jsonString).toContain('special-key')
             expect(parsedObj).toHaveProperty('special-key')

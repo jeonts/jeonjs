@@ -10,7 +10,7 @@ export function visitVariableDeclaration(node: acorn.VariableDeclaration, option
     const declarations: Record<string, any> = {}
     for (const decl of node.declarations) {
         if (decl.id.type === 'Identifier') {
-            declarations[(decl.id as acorn.Identifier).name] = decl.init ? ast2jeon(decl.init, options) : '__undefined__'
+            declarations[(decl.id as acorn.Identifier).name] = decl.init ? ast2jeon(decl.init, options) : '@undefined'
         }
     }
     return {

@@ -38,6 +38,8 @@ export interface JeonOperatorMap {
     'async function': JeonArray
     '=>': JeonArray
     'return': JeonValue
+    '//': JeonValue
+    '/ /': { pattern: string; flags: string } | JeonObject
 }
 export type JeonExpression = JeonValue | {
     [K in keyof JeonOperatorMap]: JeonOperatorMap[K]

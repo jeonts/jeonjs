@@ -1,6 +1,6 @@
 import { expect, test } from '@woby/chk'
 import { js2jeon } from '../js2jeon'
-import JSON5 from 'json5'
+import JSON5 from '@mainnet-pat/json5-bigint'
 
 // Create a JSON-like interface for JSON5
 const JSON5Wrapper = {

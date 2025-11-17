@@ -2,6 +2,8 @@
 
 A bidirectional converter between JEON (JSON-based Executable Object Notation) and TypeScript/JavaScript.
 
+[View the full JEON specification](./spec.md)
+
 ## Overview
 
 ## Demo

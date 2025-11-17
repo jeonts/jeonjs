@@ -8,10 +8,14 @@
  */
 export function visitVariableDeclaration(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
     // Handle variable declarations and special cases like class declarations
-    const declarations = Object.entries(operands).map(([name, value]) => {
-        // Determine declaration type
-        const declarationType = op === '@@' ? 'const' : 'let'
+    const declarationType = op === '@@' ? 'const' : 'let'
 
+    // Categorize variables
+    const uninitializedVars: string[] = []
+    const initializedVars: { name: string, value: any }[] = []
+    const specialDeclarations: string[] = []
+
+    for (const [name, value] of Object.entries(operands)) {
         // Check if this is a class declaration
         if (typeof value === 'object' && value !== null && (value as any)['class']) {
             // This is a class assigned to a variable
@@ -20,28 +24,50 @@ export function visitVariableDeclaration(op: string, operands: any, visit: (item
                 'class': classDef
             })
             // Replace AnonymousClass with empty for anonymous class expression
-            return `${declarationType} ${name} = ${classResult.replace('class AnonymousClass', 'class')}`
+            specialDeclarations.push(`${declarationType} ${name} = ${classResult.replace('class AnonymousClass', 'class')}`)
         }
         // Check if this is a function declaration
-        if (typeof value === 'object' && value !== null) {
+        else if (typeof value === 'object' && value !== null) {
             const valueKeys = Object.keys(value)
             if (valueKeys.length === 1) {
                 const valueOp = valueKeys[0]
                 if (valueOp.startsWith('function') || valueOp.startsWith('async function') || valueOp.endsWith('=>')) {
-                    return `const ${name} = ${visit(value)}`
+                    specialDeclarations.push(`const ${name} = ${visit(value)}`)
+                    continue
                 }
                 // Check if this is a JSX element
                 if (valueOp.startsWith('<') && valueOp.endsWith('>')) {
-                    return `${declarationType} ${name} = ${visit(value)};`
+                    specialDeclarations.push(`${declarationType} ${name} = ${visit(value)};`)
+                    continue
                 }
             }
+            // Handle initialized variables with object values
+            initializedVars.push({ name, value })
         }
         // Handle uninitialized variables
-        if (value === undefined || value === '__undefined__' || (typeof value === 'object' && value !== null && Object.keys(value).length === 0)) {
-            return `${declarationType} ${name}`
+        else if (value === undefined || value === '@undefined' || value === null) {
+            uninitializedVars.push(name)
+        } else {
+            // Handle initialized variables
+            initializedVars.push({ name, value })
         }
+    }
 
-        return `${declarationType} ${name} = ${visit(value)}`
-    })
-    return declarations.join(';\n')
+    // Group the results
+    const results: string[] = []
+
+    // Add grouped uninitialized variables
+    if (uninitializedVars.length > 0) {
+        results.push(`${declarationType} ${uninitializedVars.join(', ')}`)
+    }
+
+    // Add initialized variables individually
+    for (const { name, value } of initializedVars) {
+        results.push(`${declarationType} ${name} = ${visit(value)}`)
+    }
+
+    // Add special declarations
+    results.push(...specialDeclarations)
+
+    return results.join(';\n')
 }

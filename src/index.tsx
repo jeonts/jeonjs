@@ -1,10 +1,9 @@
 import './index.css'
-import { $, $$, render, useEffect, type JSX, If } from 'woby'  // Add If to the import
-import * as React from 'woby'
+import { $, $$, render, useEffect, useMemo, type JSX, If } from 'woby'  // Add If to the import
 import { jeon2js } from './jeon2js'
 import { js2jeon } from './js2jeon'
 import { evalJeon } from './safeEval'
-import JSON5 from 'json5'
+import JSON5 from '@mainnet-pat/json5-bigint'
 // Import PrismJS for syntax highlighting
 import * as Prism from 'prismjs'
 import 'prismjs/themes/prism.css'
@@ -12,9 +11,8 @@ import 'prismjs/themes/prism.css'
 import 'prismjs/components/prism-javascript'
 import 'prismjs/components/prism-json'
 
-// Remove customCSS variable and CSS injection
 
-// Remove all CSS class constants
+globalThis.JSON5Options = Object.assign(globalThis.JSON5Options ?? {}, { bigint: true })
 
 const App = () => {
   const jeonInput = $(`{
@@ -29,6 +27,9 @@ const App = () => {
   const useClosure = $(false)
   const evalResult = $('')
   const evalContext = $('{}') // Add context for evalJeon
+
+
+  const json = useMemo(() => $$(useJSON5) ? JSON5 : JSON, () => $$(useJSON5))
 
   // Create observable refs for the contentEditable divs
   const jeonInputRef = $<HTMLPreElement | null>(null)
@@ -168,6 +169,7 @@ const App = () => {
     }
   })
 
+
   const convertJeonToJs = () => {
     try {
       // Get the current value from the contentEditable div using observable ref
@@ -177,28 +179,10 @@ const App = () => {
       // Note: We don't update jeonInput here because we're reading from the DOM directly
       // The jeonInput observable is for the reactive state that drives the UI
 
-      console.log('JSON5:', JSON5)
-      console.log('typeof JSON5:', typeof JSON5)
-      console.log('JSON5.stringify:', JSON5.stringify)
-      console.log('JSON5.parse:', JSON5.parse)
-      console.log('typeof JSON5.stringify:', typeof JSON5.stringify)
-      console.log('typeof JSON5.parse:', typeof JSON5.parse)
-
-      // Create a JSON-like interface for JSON5
-      const JSON5Wrapper = {
-        stringify: JSON5.stringify,
-        parse: JSON5.parse,
-        [Symbol.toStringTag]: 'JSON'
-      }
-
-      console.log('JSON5Wrapper created:', JSON5Wrapper)
-      console.log('typeof JSON5Wrapper.parse:', typeof JSON5Wrapper.parse)
-      console.log('typeof JSON5.parse:', typeof JSON5.parse)
-
-      const jeon = useJSON5() ? JSON5.parse(currentValue) : JSON.parse(currentValue)
+      const jeon = $$(json).parse(currentValue)
       // Pass the JSON implementation and closure option to jeon2js
       // Note: We do NOT format the output in 1 line even when closure is checked
-      const code = jeon2js(jeon, { json: useJSON5() ? JSON5Wrapper : JSON, closure: useClosure() })
+      const code = jeon2js(jeon, { json: $$(json), closure: useClosure() })
       console.log('Converted JavaScript code:', code)
       jsOutput(code)
     } catch (error: any) {
@@ -213,27 +197,6 @@ const App = () => {
       const refElement = $$(jsInputRef)
       const currentValue = refElement ? (refElement.textContent || refElement.innerText) : ''
 
-      // Note: We don't update jsInput here because we're reading from the DOM directly
-      // The jsInput observable is for the reactive state that drives the UI
-
-      console.log('JSON5:', JSON5)
-      console.log('typeof JSON5:', typeof JSON5)
-      console.log('JSON5.stringify:', JSON5.stringify)
-      console.log('JSON5.parse:', JSON5.parse)
-      console.log('typeof JSON5.stringify:', typeof JSON5.stringify)
-      console.log('typeof JSON5.parse:', typeof JSON5.parse)
-
-      // Create a JSON-like interface for JSON5
-      const JSON5Wrapper = {
-        stringify: JSON5.stringify,
-        parse: JSON5.parse,
-        [Symbol.toStringTag]: 'JSON'
-      }
-
-      console.log('JSON5Wrapper created:', JSON5Wrapper)
-      console.log('typeof JSON5Wrapper.stringify:', typeof JSON5Wrapper.stringify)
-      console.log('typeof JSON5Wrapper.parse:', typeof JSON5Wrapper.parse)
-
       // Auto-wrap JavaScript code to make it parseable
       let codeToParse = currentValue as string
       let originalInput = codeToParse
@@ -241,7 +204,7 @@ const App = () => {
 
       try {
         // First try to parse as-is
-        jeon = js2jeon(codeToParse, { json: useJSON5() ? JSON5Wrapper : JSON })
+        jeon = js2jeon(codeToParse, { json: $$(json) })
 
         // Check if result is a labeled statement, which usually means we need wrapping
         if (jeon === '[LabeledStatement]') {
@@ -251,7 +214,7 @@ const App = () => {
         // If parsing fails or produces a labeled statement, try wrapping with parentheses
         try {
           const wrappedCode = `(${codeToParse})`
-          const wrappedJeon = js2jeon(wrappedCode, { json: useJSON5() ? JSON5Wrapper : JSON })
+          const wrappedJeon = js2jeon(wrappedCode, { json: $$(json) })
 
           // If successful and not a labeled statement, update the input and use the wrapped result
           if (wrappedJeon !== '[LabeledStatement]') {
@@ -279,7 +242,7 @@ const App = () => {
         }
       }
 
-      const formatted = useJSON5() ? JSON5Wrapper.stringify(jeon, null, 2) : JSON.stringify(jeon, null, 2)
+      const formatted = $$(json).stringify(jeon, null, 2)
       console.log('Converted JEON:', formatted)
       jeonOutput(formatted)
       console.log('JEON output set to:', formatted)
@@ -529,14 +492,14 @@ const App = () => {
         return
       }
 
-      const jeon = useJSON5() ? JSON5.parse(jeonText) : JSON.parse(jeonText)
+      const jeon = $$(json).parse(jeonText)
 
       // Parse the context JSON
-      let context = {}
+      let context: Record<string, any> = {}
       try {
         const contextText = $$(evalContext)
         // Use JSON5 or standard JSON based on the useJSON5 flag
-        context = contextText ? (useJSON5() ? JSON5.parse(contextText) : JSON.parse(contextText)) : {}
+        context = contextText ? $$(json).parse(contextText) : {}
       } catch (contextError) {
         evalResult('Error: Invalid context JSON')
         return
@@ -545,53 +508,16 @@ const App = () => {
       // Evaluate using evalJeon with context
       let result = evalJeon(jeon, context)
 
-      // If the result is a function, we need to call it with appropriate arguments
-      // For now, we'll try to infer arguments from the context or use default values
+      // According to JEON specification, evalJeon should not automatically invoke functions
+      // It should return a callable function that must be explicitly called with arguments
+      // So we should return the function itself rather than trying to call it
+
+      // Handle function results specially since they can't be JSON stringified
       if (typeof result === 'function') {
-        // Try to get function parameter names from the JEON structure
-        const jeonKeys = Object.keys(jeon)
-        const funcKey = jeonKeys.find(key => key.includes('=>'))
-
-        if (funcKey) {
-          // Extract parameter names from the function key
-          const paramMatch = funcKey.match(/\(([^)]*)\)/)
-          const params = paramMatch ? paramMatch[1].split(',').map(p => p.trim()).filter(p => p) : []
-
-          // Create arguments from context or use default values
-          const args = params.map(param => {
-            if (context.hasOwnProperty(param)) {
-              return context[param]
-            }
-            // Default values for common parameter names
-            switch (param) {
-              case 'a': return 1
-              case 'b': return 2
-              case 'c': return 3
-              case 'x': return 1
-              case 'y': return 2
-              case 'z': return 3
-              default: return undefined
-            }
-          })
-
-          // Call the function with the arguments
-          result = result(...args)
-        } else {
-          // For other function types, try calling with some default arguments
-          try {
-            result = result(1, 2, 3) // Try with common arguments
-          } catch (e) {
-            // If that fails, try with no arguments
-            try {
-              result = result()
-            } catch (e2) {
-              // If both fail, keep the function as the result
-            }
-          }
-        }
+        evalResult('[Function]')
+      } else {
+        evalResult(JSON.stringify(result, null, 2))
       }
-
-      evalResult(JSON.stringify(result, null, 2))
     } catch (error: any) {
       console.error('evalJeon error:', error)
       evalResult(`Error: ${error.message}`)
@@ -608,7 +534,7 @@ const App = () => {
           <input
             type="checkbox"
             id="useJSON5"
-            checked={useJSON5()}
+            checked={$$(useJSON5)}
             onChange={(e: any) => useJSON5(e.target.checked)}
             class="mr-2"
           />

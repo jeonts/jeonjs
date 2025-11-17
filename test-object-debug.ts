@@ -1,0 +1,1 @@
+import { jeon2js } from './src/jeon2js'; const testObj = { 'bigint': { 'bigint': '1234567890123456789' } }; console.log('Test object:', JSON.stringify(testObj, null, 2)); const result = jeon2js(testObj); console.log('Final result:', result);

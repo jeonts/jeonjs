@@ -1,4 +1,4 @@
-JEON Specification
+# JEON Specification
 
 The JEON Notation (JEON) is a method for representing executable JavaScript constructs—such as operations, functions, and components—using only standard JSON objects, arrays, and literals. This enables easy serialization and transport of executable logic.
 
@@ -13,6 +13,123 @@ Every valid JEON structure is a single JSON Object or Array where the key define
 | Instance Reference | `@this` | Refers to the current object instance within a method or accessor. |
 | Literal | String, Number, Boolean, null | Standard JSON values treated as constants. |
 
+## Complete Operator Reference
+
+This section provides a comprehensive reference for all operators supported in JEON, including their syntax, usage examples, and JavaScript equivalents.
+
+### Arithmetic Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `+` | `{"+": [operand1, operand2, ...]}` | Array of 2+ operands | `a + b + c` | `{"+": [1, 2, 3]}` |
+| `-` | `{"-": [operand1, operand2, ...]}` | Array of 2+ operands | `a - b - c` | `{"-": [10, 3, 2]}` |
+| `*` | `{"*": [operand1, operand2, ...]}` | Array of 2+ operands | `a * b * c` | `{"*": [2, 3, 4]}` |
+| `/` | `{"/": [operand1, operand2, ...]}` | Array of 2+ operands | `a / b / c` | `{"/": [24, 2, 3]}` |
+| `%` | `{"%": [operand1, operand2]}` | Array of 2 operands | `a % b` | `{"%": [10, 3]}` |
+| Unary `+` | `{"+": operand}` | Single operand | `+a` | `{"+": "@value"}` |
+| Unary `-` | `{"-": operand}` | Single operand | `-a` | `{"-": "@value"}` |
+
+### Comparison Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `==` | `{"==": [operand1, operand2]}` | Array of 2 operands | `a == b` | `{"==": ["@a", "@b"]}` |
+| `===` | `{"===": [operand1, operand2]}` | Array of 2 operands | `a === b` | `{"===": ["@a", "@b"]}` |
+| `!=` | `{"!=": [operand1, operand2]}` | Array of 2 operands | `a != b` | `{"!=": ["@a", "@b"]}` |
+| `!==` | `{"!==": [operand1, operand2]}` | Array of 2 operands | `a !== b` | `{"!==": ["@a", "@b"]}` |
+| `<` | `{"<": [operand1, operand2]}` | Array of 2 operands | `a < b` | `{"<": ["@a", "@b"]}` |
+| `>` | `{">": [operand1, operand2]}` | Array of 2 operands | `a > b` | `{">": ["@a", "@b"]}` |
+| `<=` | `{"<=": [operand1, operand2]}` | Array of 2 operands | `a <= b` | `{"<=": ["@a", "@b"]}` |
+| `>=` | `{">=": [operand1, operand2]}` | Array of 2 operands | `a >= b` | `{">=": ["@a", "@b"]}` |
+
+### Logical Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `&&` | `{"&&": [operand1, operand2, ...]}` | Array of 2+ operands | `a && b && c` | `{"&&": ["@a", "@b", "@c"]}` |
+| `||` | `{"||": [operand1, operand2, ...]}` | Array of 2+ operands | `a || b || c` | `{"||": ["@a", "@b", "@c"]}` |
+| `!` | `{"!": operand}` | Single operand | `!a` | `{"!": "@condition"}` |
+
+### Bitwise Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `~` | `{"~": operand}` | Single operand | `~a` | `{"~": "@value"}` |
+| `&` | `{"&": [operand1, operand2]}` | Array of 2 operands | `a & b` | `{"&": [5, 3]}` |
+| `|` | `{"|": [operand1, operand2]}` | Array of 2 operands | `a | b` | `{"|": [5, 3]}` |
+| `^` | `{"^": [operand1, operand2]}` | Array of 2 operands | `a ^ b` | `{"^": [5, 3]}` |
+| `<<` | `{"<<": [operand1, operand2]}` | Array of 2 operands | `a << b` | `{"<<": [5, 2]}` |
+| `>>` | `{">>": [operand1, operand2]}` | Array of 2 operands | `a >> b` | `{">>": [5, 2]}` |
+| `>>>` | `{">>>": [operand1, operand2]}` | Array of 2 operands | `a >>> b` | `{">>>": [5, 2]}` |
+
+### Assignment Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `=` | `{"=": [target, value]}` | Array of 2 operands | `a = b` | `{"=": ["@a", 5]}` |
+| `+=` | `{"+=": [target, value]}` | Array of 2 operands | `a += b` | `{"+=": ["@a", 5]}` |
+| `-=` | `{"-=": [target, value]}` | Array of 2 operands | `a -= b` | `{"-=": ["@a", 5]}` |
+| `*=` | `{"*=": [target, value]}` | Array of 2 operands | `a *= b` | `{"*=": ["@a", 5]}` |
+| `/=` | `{"/=": [target, value]}` | Array of 2 operands | `a /= b` | `{"/=": ["@a", 5]}` |
+| `%=` | `{"%=": [target, value]}` | Array of 2 operands | `a %= b` | `{"%=": ["@a", 5]}` |
+| `<<=` | `{"<<=": [target, value]}` | Array of 2 operands | `a <<= b` | `{"<<=": ["@a", 2]}` |
+| `>>=` | `{">>=": [target, value]}` | Array of 2 operands | `a >>= b` | `{">>=": ["@a", 2]}` |
+| `>>>=` | `{">>>=": [target, value]}` | Array of 2 operands | `a >>>= b` | `{">>>=": ["@a", 2]}` |
+| `&=` | `{"&=": [target, value]}` | Array of 2 operands | `a &= b` | `{"&=": ["@a", 3]}` |
+| `^=` | `{"^=": [target, value]}` | Array of 2 operands | `a ^= b` | `{"^=": ["@a", 3]}` |
+| `|=` | `{"|=": [target, value]}` | Array of 2 operands | `a |= b` | `{"|=": ["@a", 3]}` |
+
+### Increment/Decrement Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `++` | `{"++": operand}` | Single operand | `++a` | `{"++": "@counter"}` |
+| `--` | `{"--": operand}` | Single operand | `--a` | `{"--": "@counter"}` |
+| `++postfix` | `{"++postfix": operand}` | Single operand | `a++` | `{"++postfix": "@counter"}` |
+| `--postfix` | `{"--postfix": operand}` | Single operand | `a--` | `{"--postfix": "@counter"}` |
+
+### Special Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `()` | `{"()": [function, arg1, arg2, ...]}` | Array with function reference and arguments | `func(a, b)` | `{"()": ["@func", "@a", "@b"]}` |
+| `.` | `{"." [object, property1, property2, ...]}` | Array with object and property chain | `obj.prop1.prop2` | `{"." ["@obj", "prop1", "prop2"]}` |
+| `new` | `{"new": [constructor, arg1, arg2, ...]}` | Array with constructor and arguments | `new Class(a, b)` | `{"new": ["Date", 0]}` |
+| `?` | `{"?": [condition, trueValue, falseValue]}` | Array of 3 operands | `condition ? trueValue : falseValue` | `{"?": ["@isValid", "valid", "invalid"]}` |
+| `typeof` | `{"typeof": operand}` | Single operand | `typeof a` | `{"typeof": "@value"}` |
+| `void` | `{"void": operand}` | Single operand | `void a` | `{"void": "@value"}` |
+| `delete` | `{"delete": operand}` | Single operand | `delete a` | `{"delete": "@value"}` |
+| `(` | `{"(": expression}` | Single operand | `(expression)` | `{"(": {"+": [1, 2]}}` |
+| `...` | `{"...": expression}` | Single operand | `...expression` | `{"...": [1, 2, 3]}` |
+
+### Control Flow Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `if` | `{"if": [condition, trueBlock, falseBlock]}` | Array of 2-3 operands | `if (condition) { trueBlock } else { falseBlock }` | `{"if": ["@condition", "doThis()", "doThat()"]}` |
+| `while` | `{"while": [condition, body]}` | Array of 2 operands | `while (condition) { body }` | `{"while": ["@condition", "doThis()"]}` |
+| `for` | `{"for": [init, condition, increment, body]}` | Array of 4 operands | `for (init; condition; increment) { body }` | `{"for": ["@i = 0", "@i < 10", "@i++", "doThis()"]}` |
+
+### Function Declaration Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `function` | `{"function(param1, param2, ...)": [body]}` | Array of statements | `function name(param1, param2) { body }` | `{"function(a, b)": [{"return": {"+": ["@a", "@b"]}}]}` |
+| `async function` | `{"async function(param1, param2, ...)": [body]}` | Array of statements | `async function name(param1, param2) { body }` | `{"async function()": [{"await": {"fetch()": ["/api"]}}]}` |
+| `function*` | `{"function*(param1, param2, ...)": [body]}` | Array of statements | `function* name(param1, param2) { body }` | `{"function*()": [{"yield": 1}]}` |
+| `=>` | `{"(param1, param2, ...) =>": body}` | Expression or array of statements | `(param1, param2) => body` | `{"(a, b) =>": {"+": ["@a", "@b"]}}` |
+
+### Other Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `return` | `{"return": expression}` | Single operand | `return expression` | `{"return": "@value"}` |
+| `yield` | `{"yield": expression}` | Single operand | `yield expression` | `{"yield": "@value"}` |
+| `yield*` | `{"yield*": expression}` | Single operand | `yield* expression` | `{"yield*": [1, 2, 3]}` |
+| `await` | `{"await": expression}` | Single operand | `await expression` | `{"await": {"fetch()": ["/api"]}}` |
+| `break` | `{"break": label}` | Optional string | `break label` | `{"break": "loop1"}` |
+| `switch` | `{"switch": [expression, cases, default]}` | Array of 3 operands | `switch (expression) { cases }` | Complex structure |
+
 ## JSON5 Support
 
 While the JEON specification is based on standard JSON, the library also supports **JSON5**. This allows for a more human-readable and less verbose representation of JEON objects.
@@ -25,7 +142,7 @@ JSON5 features that can be used with JEON include:
 
 To use JSON5, you can pass a JSON5 parser to the `js2jeon` and `jeon2js` functions in the `options` object:
 
-```typescript
+``typescript
 import { js2jeon, jeon2js } from 'jeon';
 import JSON5 from 'json5';
 
@@ -37,7 +154,6 @@ const jeon = js2jeon(code, { json: JSON5 });
 // Convert back to JavaScript using JSON5
 const js = jeon2js(jeon, { json: JSON5 });
 ```
-
 
 ## 1. Function and Operator Expressions
 
@@ -230,27 +346,30 @@ Structure: `{".": [target_expression, segment1, segment2, ...]}`
 
 Yield expressions are used in generator functions to pause and resume execution, returning a value to the caller.
 
-| JS Construct | Key/Structure | Value | Example (JS: await promise) |
+| JS Construct | Key/Structure | Value | Example (JS: yield value) |
 |--------------|---------------|-------|-----------------------------|
-| `await expression` | `{"await": expression}` | Expression that returns a Promise | |
+| `yield expression` | `{"yield": expression}` | Expression that returns a value | |
+| `yield* expression` | `{"yield*": expression}` | Expression that returns an iterable | |
 
-#### JEON Example (Await in async function):
+#### JEON Example (Yield in generator function):
 
 ```json
 {
-  "async function fetchData()": [
-    {
-      "@": {
-        "response": {
-          "await": {
-            "()": ["@fetch", "/api/data"]
-          }
-        }
-      }
-    },
-    {
-      "return": "@response"
-    }
+  "function* counter()": [
+    { "yield": 1 },
+    { "yield": 2 },
+    { "yield": 3 }
+  ]
+}
+```
+
+#### JEON Example (Yield* in generator function):
+
+```json
+{
+  "function* combined()": [
+    { "yield*": [1, 2, 3] },
+    { "yield*": [4, 5, 6] }
   ]
 }
 ```
@@ -636,7 +755,7 @@ Component structures use the tag name enclosed in angle brackets as the key. Pro
 
 Combining a function call with a component structure:
 
-```json
+``json
 {
   "<button>": {
       "className": "submit-btn",
@@ -680,3 +799,651 @@ The implementation of the Member Access (`.`) and Function Execution (`()`) oper
 
 - Any attempt to use the `.` operator to access a property that resolves to a blacklisted constructor (e.g., trying to access `window` via `global.window`) must throw an evaluation error.
 - Any attempt to use the `()` operator to call a blacklisted function (e.g., `alert()`) or a method on a blacklisted object must throw an evaluation error.
+
+## Detailed Operator Examples
+
+### 1. Parentheses Operator `(`
+
+The parentheses operator is used to group expressions and control evaluation order.
+
+**JEON Structure:**
+```json
+{
+  "(": expression
+}
+```
+
+**Examples:**
+
+1. Simple grouping:
+```json
+{
+  "(": {
+    "+": [1, 2]
+  }
+}
+```
+JavaScript equivalent: `(1 + 2)`
+
+2. Complex expression grouping:
+```json
+{
+  "*": [
+    {
+      "(": {
+        "+": [1, 2]
+      }
+    },
+    3
+  ]
+}
+```
+JavaScript equivalent: `(1 + 2) * 3`
+
+### 2. Function Call Operator `()`
+
+The function call operator is used to invoke functions. It takes an array where the first element is the function reference and subsequent elements are arguments.
+
+**JEON Structure:**
+```json
+{
+  "()": [function_expression, arg1, arg2, ...]
+}
+```
+
+**Examples:**
+
+1. Calling a method on an object:
+```json
+{
+  "()": [
+    {
+      ".": ["@Math", "abs"]
+    },
+    -5
+  ]
+}
+```
+JavaScript equivalent: `Math.abs(-5)`
+
+2. Calling a function stored in a variable:
+```json
+{
+  "()": ["@myFunction", "@arg1", "@arg2"]
+}
+```
+JavaScript equivalent: `myFunction(arg1, arg2)`
+
+### 3. Property Access Operator `.`
+
+The property access operator is used to access properties of objects. It takes an array where the first element is the object and subsequent elements are property names.
+
+**JEON Structure:**
+```json
+{
+  ".": [object_expression, property1, property2, ...]
+}
+```
+
+**Examples:**
+
+1. Simple property access:
+```json
+{
+  ".": ["@obj", "prop"]
+}
+```
+JavaScript equivalent: `obj.prop`
+
+2. Chained property access:
+```json
+{
+  ".": ["@obj", "prop1", "prop2"]
+}
+```
+JavaScript equivalent: `obj.prop1.prop2`
+
+3. Method access:
+```json
+{
+  ".": ["@array", "push"]
+}
+```
+JavaScript equivalent: `array.push`
+
+### 4. New Operator
+
+The new operator is used to create instances of classes or constructors.
+
+**JEON Structure:**
+```json
+{
+  "new": [constructor, arg1, arg2, ...]
+}
+```
+
+**Examples:**
+
+1. Creating a new Date object:
+```json
+{
+  "new": ["Date"]
+}
+```
+JavaScript equivalent: `new Date()`
+
+2. Creating a new Date with arguments:
+```json
+{
+  "new": ["Date", 0]
+}
+```
+JavaScript equivalent: `new Date(0)`
+
+### 5. Spread Operator `...`
+
+The spread operator is used to expand arrays or objects.
+
+**JEON Structure:**
+```json
+{
+  "...": expression
+}
+```
+
+**Examples:**
+
+1. Array spread:
+```json
+{
+  "@": {
+    "arr": [
+      1,
+      2,
+      {
+        "...": [3, 4, 5]
+      },
+      6
+    ]
+  }
+}
+```
+JavaScript equivalent: `let arr = [1, 2, ...[3, 4, 5], 6]`
+
+2. Object spread:
+```json
+{
+  "@": {
+    "obj": {
+      "...": {
+        "a": 1,
+        "b": 2
+      },
+      "c": 3
+    }
+  }
+}
+```
+JavaScript equivalent: `let obj = {...{a: 1, b: 2}, c: 3}`
+
+### 6. Arrow Function Operator `=>`
+
+Arrow functions are defined using the `=>` operator. The key is a string that specifies the parameters, and the value is the function body.
+
+**JEON Structure:**
+```json
+{
+  "(param1, param2, ...) =>": body
+}
+```
+
+**Examples:**
+
+1. Simple arrow function with no parameters:
+```json
+{
+  "()=>": 42
+}
+```
+JavaScript equivalent: `() => 42`
+
+2. Arrow function with parameters returning an expression:
+```json
+{
+  "(a, b) =>": {
+    "+": ["@a", "@b"]
+  }
+}
+```
+JavaScript equivalent: `(a, b) => a + b`
+
+3. Arrow function with parameters returning an object:
+```json
+{
+  "(name) =>": {
+    "name": "@name",
+    "greeting": {
+      "+": ["Hello , "@name"]
+    }
+  }
+}
+```
+JavaScript equivalent: `(name) => ({ name: name, greeting: "Hello " + name })`
+
+### 7. Assignment Operator `=`
+
+The assignment operator is used to assign values to variables.
+
+**JEON Structure:**
+```json
+{
+  "=": [target, value]
+}
+```
+
+**Examples:**
+
+1. Simple variable assignment:
+```json
+{
+  "=": ["@x", 5]
+}
+```
+JavaScript equivalent: `x = 5`
+
+2. Property assignment:
+```json
+{
+  "=": [
+    {
+      ".": ["@obj", "prop"]
+    },
+    "value"
+  ]
+}
+```
+JavaScript equivalent: `obj.prop = "value"`
+
+### 8. Conditional Operator `?`
+
+The conditional operator (ternary operator) is used for conditional expressions.
+
+**JEON Structure:**
+```json
+{
+  "?": [condition, trueValue, falseValue]
+}
+```
+
+**Examples:**
+
+1. Simple conditional:
+```json
+{
+  "?": [
+    {
+      ">": ["@x", 0]
+    },
+    "positive",
+    "non-positive"
+  ]
+}
+```
+JavaScript equivalent: `x > 0 ? "positive" : "non-positive"`
+
+### 9. If Statement `if`
+
+The if operator is used for conditional execution of statements.
+
+**JEON Structure:**
+```json
+{
+  "if": [condition, trueBlock, falseBlock]
+}
+```
+
+**Examples:**
+
+1. Simple if statement:
+```json
+{
+  "if": [
+    {
+      ">": ["@x", 0]
+    },
+    {
+      "log()": ["positive"]
+    }
+  ]
+}
+```
+JavaScript equivalent: `if (x > 0) { log("positive"); }`
+
+2. If-else statement:
+```json
+{
+  "if": [
+    {
+      ">": ["@x", 0]
+    },
+    {
+      "log()": ["positive"]
+    },
+    {
+      "log()": ["non-positive"]
+    }
+  ]
+}
+```
+JavaScript equivalent: `if (x > 0) { log("positive"); } else { log("non-positive"); }`
+
+### 10. While Loop `while`
+
+The while operator is used for repetitive execution while a condition is true.
+
+**JEON Structure:**
+```json
+{
+  "while": [condition, body]
+}
+```
+
+**Examples:**
+
+1. Simple while loop:
+```json
+{
+  "while": [
+    {
+      "<": ["@i", 10]
+    },
+    {
+      "++": "@i"
+    }
+  ]
+}
+```
+JavaScript equivalent: `while (i < 10) { ++i; }`
+
+### 11. For Loop `for`
+
+The for operator is used for repetitive execution with initialization, condition, and increment expressions.
+
+**JEON Structure:**
+```json
+{
+  "for": [init, condition, increment, body]
+}
+```
+
+**Examples:**
+
+1. Simple for loop:
+```json
+{
+  "for": [
+    {
+      "@": {
+        "i": 0
+      }
+    },
+    {
+      "<": ["@i", 10]
+    },
+    {
+      "++": "@i"
+    },
+    {
+      "log()": ["@i"]
+    }
+  ]
+}
+```
+JavaScript equivalent: `for (let i = 0; i < 10; i++) { log(i); }`
+
+### 12. Function Declarations
+
+Function declarations in JEON use special keys that specify the function type and parameters.
+
+**JEON Structure:**
+```json
+{
+  "function(param1, param2, ...)": [body_statements]
+}
+```
+
+**Examples:**
+
+1. Simple function declaration:
+```json
+{
+  "function add(a, b)": [
+    {
+      "return": {
+        "+": ["@a", "@b"]
+      }
+    }
+  ]
+}
+```
+JavaScript equivalent: `function add(a, b) { return a + b; }`
+
+2. Function with no parameters:
+```json
+{
+  "function getValue()": [
+    {
+      "return": 42
+    }
+  ]
+}
+```
+JavaScript equivalent: `function getValue() { return 42; }`
+
+### 13. Async Function Declarations
+
+Async function declarations are similar to regular function declarations but use the `async function` prefix.
+
+**JEON Structure:**
+```json
+{
+  "async function(param1, param2, ...)": [body_statements]
+}
+```
+
+**Examples:**
+
+1. Simple async function:
+```json
+{
+  "async function fetchData()": [
+    {
+      "return": {
+        "await": {
+          "fetch()": ["/api/data"]
+        }
+      }
+    }
+  ]
+}
+```
+JavaScript equivalent: `async function fetchData() { return await fetch("/api/data"); }`
+
+### 14. Generator Function Declarations
+
+Generator function declarations use the `function*` prefix.
+
+**JEON Structure:**
+```json
+{
+  "function*(param1, param2, ...)": [body_statements]
+}
+```
+
+**Examples:**
+
+1. Simple generator function:
+```json
+{
+  "function* counter()": [
+    {
+      "yield": 1
+    },
+    {
+      "yield": 2
+    },
+    {
+      "yield": 3
+    }
+  ]
+}
+```
+JavaScript equivalent: `function* counter() { yield 1; yield 2; yield 3; }`
+
+### 15. Return Statement
+
+The return operator is used to return values from functions.
+
+**JEON Structure:**
+```json
+{
+  "return": expression
+}
+```
+
+**Examples:**
+
+1. Return a value:
+```json
+{
+  "return": {
+    "+": ["@a", "@b"]
+  }
+}
+```
+JavaScript equivalent: `return a + b;`
+
+2. Return without a value:
+```json
+{
+  "return": null
+}
+```
+JavaScript equivalent: `return;`
+
+### 16. Yield Statement
+
+The yield operator is used in generator functions to produce values.
+
+**JEON Structure:**
+```json
+{
+  "yield": expression
+}
+```
+
+**Examples:**
+
+1. Yield a value:
+```json
+{
+  "yield": 42
+}
+```
+JavaScript equivalent: `yield 42;`
+
+2. Yield without a value:
+```json
+{
+  "yield": null
+}
+```
+JavaScript equivalent: `yield;`
+
+### 17. Await Expression
+
+The await operator is used in async functions to wait for Promises.
+
+**JEON Structure:**
+```json
+{
+  "await": expression
+}
+```
+
+**Examples:**
+
+1. Await a Promise:
+```json
+{
+  "await": {
+    "fetch()": ["/api/data"]
+  }
+}
+```
+JavaScript equivalent: `await fetch("/api/data");`
+
+### 18. Variable Declarations
+
+Variable declarations in JEON use special operators for different types of variables.
+
+**JEON Structure:**
+```json
+{
+  "@": {  // for let/var declarations
+    "variableName": initialValue
+  },
+  "@@": {  // for const declarations
+    "constantName": initialValue
+  }
+}
+```
+
+**Examples:**
+
+1. Let/var declaration:
+```json
+{
+  "@": {
+    "x": 5,
+    "y": {
+      "+": [1, 2]
+    }
+  }
+}
+```
+JavaScript equivalent: `let x = 5; let y = 1 + 2;`
+
+2. Const declaration:
+```json
+{
+  "@@": {
+    "PI": 3.14159,
+    "MAX_SIZE": 100
+  }
+}
+```
+JavaScript equivalent: `const PI = 3.14159; const MAX_SIZE = 100;`
+
+3. Uninitialized variable (using sentinel value):
+```json
+{
+  "@": {
+    "uninitializedVar": "@undefined"
+  }
+}
+```
+JavaScript equivalent: `let uninitializedVar;`
+
+## Operator Precedence and Associativity
+
+In JEON, operator precedence and associativity are determined by the structure of the JSON objects rather than implicit rules. Parentheses `()` can be used to explicitly control evaluation order when needed.
+
+## Security Considerations
+
+JEON is designed with security in mind. The explicit nature of all operations means that potentially dangerous constructs must be explicitly represented in the JSON structure, making it easier to validate and sanitize before execution.
+
+1. No implicit code execution - all function calls must use the explicit `()` operator
+2. No dynamic property access shortcuts - all member access must use the explicit `.` operator
+3. All operations are explicitly represented in the JSON structure, making validation possible
+4. The evalJeon function provides a safe evaluation environment with a restricted context

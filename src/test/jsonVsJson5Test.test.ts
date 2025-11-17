@@ -1,5 +1,5 @@
 import { expect, test } from '@woby/chk'
-import JSON5 from 'json5'
+import JSON5 from '@mainnet-pat/json5-bigint'
 import { jeon2js } from '../jeon2js'
 
 test('JSON vs JSON5 Comparison Test', () => {

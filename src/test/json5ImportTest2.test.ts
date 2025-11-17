@@ -1,5 +1,5 @@
 import { expect, test } from '@woby/chk'
-import JSON5 from 'json5'
+import JSON5 from '@mainnet-pat/json5-bigint'
 import * as JSON5Namespace from 'json5'
 
 test('JSON5 Import Test 2', () => {

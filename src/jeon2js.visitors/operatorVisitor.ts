@@ -23,6 +23,10 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
                 break
             } else if (typeof operands !== 'undefined') {
                 // Unary operator case
+                // Special handling for delete operator to ensure proper spacing
+                if (op === 'delete') {
+                    return `${op} ${visit(operands)}`
+                }
                 return `${op}${visit(operands)}`
             }
             break
@@ -58,6 +62,22 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
         case '(':
             // Handle parentheses expressions
             return `(${visit(operands)})`
+
+        case '//':
+            // Handle comment operator - return JavaScript comment
+            if (typeof operands === 'string') {
+                return `// ${operands}`
+            }
+            return '// (comment)'
+
+        case '/ /':
+            // Handle regex operator
+            if (typeof operands === 'object' && operands !== null) {
+                const pattern = operands.pattern || ''
+                const flags = operands.flags || ''
+                return `/${pattern}/${flags}`
+            }
+            return '/(?:)/'
 
         case '+':
         case '*':

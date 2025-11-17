@@ -1,0 +1,1 @@
+import { jeon2js } from './src/jeon2js'; const jeon = { '(': { 'bigint': { 'bigint': '1234567890123456789' } } }; console.log('Processing parentheses operator:'); const parenResult = jeon2js(jeon); console.log('Result:', parenResult);
