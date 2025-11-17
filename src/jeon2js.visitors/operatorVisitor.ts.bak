@@ -70,19 +70,6 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
             }
             return '// (comment)'
 
-        case '/*':
-            // Handle multiline block comment operator - return JavaScript block comment
-            if (Array.isArray(operands)) {
-                // For array of strings, join with newlines to create multiline comment
-                const commentText = operands.join('\n')
-                return `/*${commentText}*/`
-            } else if (typeof operands === 'string') {
-                // For single string, create single-line block comment
-                return `/*${operands}*/`
-            }
-            // Fallback for invalid operands
-            return '/* (comment) */'
-
         case '/ /':
             // Handle regex operator
             if (typeof operands === 'object' && operands !== null) {
