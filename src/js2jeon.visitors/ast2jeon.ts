@@ -7,7 +7,7 @@ import { visitorRegistry } from './registry'
  * @param options Conversion options
  * @param options.json The JSON implementation to use (JSON or JSON5)
  */
-export function ast2jeon(node: acorn.Node, options?: { json?: typeof JSON }): any {
+export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
     if (!node) return null
 
     // Check if we have a visitor for this node type
@@ -347,10 +347,44 @@ export function ast2jeon(node: acorn.Node, options?: { json?: typeof JSON }): an
             }
 
         case 'Program':
+            // Handle comments in Program nodes
+            let programResult: any
             if ((node as acorn.Program).body.length === 1) {
-                return ast2jeon((node as acorn.Program).body[0], options)
+                programResult = ast2jeon((node as acorn.Program).body[0], options)
+            } else {
+                programResult = (node as acorn.Program).body.map(stmt => ast2jeon(stmt, options))
             }
-            return (node as acorn.Program).body.map(stmt => ast2jeon(stmt, options))
+
+            // If there are comments, add them to the result
+            if (node.comments && node.comments.length > 0) {
+                // Filter out comments that are just whitespace
+                const nonEmptyComments = node.comments.filter((comment: any) => comment.value.trim() !== '')
+                if (nonEmptyComments.length > 0) {
+                    // If the result is an object, add comments to it
+                    if (typeof programResult === 'object' && programResult !== null && !Array.isArray(programResult)) {
+                        return {
+                            ...programResult,
+                            '//': nonEmptyComments.map((comment: any) => comment.value)
+                        }
+                    }
+                    // If the result is an array, wrap it in an object with comments
+                    else if (Array.isArray(programResult)) {
+                        return {
+                            'program': programResult,
+                            '//': nonEmptyComments.map((comment: any) => comment.value)
+                        }
+                    }
+                    // For other cases, just return the result with comments
+                    else {
+                        return {
+                            'result': programResult,
+                            '//': nonEmptyComments.map((comment: any) => comment.value)
+                        }
+                    }
+                }
+            }
+
+            return programResult
 
         default:
             // For unhandled node types, return a placeholder
