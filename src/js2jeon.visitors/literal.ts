@@ -12,5 +12,12 @@ export function visitLiteral(node: acorn.Literal, options?: { json?: typeof JSON
         }
     }
 
+    // Check if this is a BigInt literal
+    if (typeof node.value === 'bigint' || (node as any).bigint) {
+        // For BigInt, we return the raw string representation with 'n' suffix
+        // This allows JSON5 to handle it properly
+        return node.raw || ((node as any).bigint + 'n')
+    }
+
     return node.value
 }

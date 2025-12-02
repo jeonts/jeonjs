@@ -20,16 +20,42 @@ const App = () => {
     { "return": { "+": ["@a", "@b"] } }
   ]
 }`)
-  const jsInput = $('function sum(a, b) {\n  return a + b;\n}')
+  // const jsInput = $('function sum(a, b) {\n  return a + b;\n}')
+  const jsInput = $(`
+// Some of the built-in JavaScript types that get encoded
+
+const item = { foo: 1 };
+
+return {
+  date: new /* Date */ Date("2025-01-01T00:00:00.000Z"),
+  regexp2: /* hello */ /hello world/,
+  regexp: /hello world/gi,
+  error: new Error("Something went wrong", { cause: 404 }),
+  url: new URL("https://example.com/path?query=value"),
+  urlSearchParams: new URLSearchParams("query=value&another=value"),
+  bigint: 1234567890123456789n,
+  symbol: Symbol.for("test"), // end of line
+  undefined: undefined,
+  // None of those are handled by normal JSON.stringify
+  specialNumbers: [Infinity, /* negative */ -Infinity, // end of inline
+   -0, NaN],
+  someData: new Uint8Array([1, 2, 3, 4, 5]),
+  set: new Set([1, 2, 3]),
+  map: new Map([[1, 1], // end of line 
+  [2, 2]]),
+  sameRefs: [item, item, item],
+  sparsedArray: [0,, /* in array */, undefined, 0]
+}
+    `)
   const jsOutput = $('')
   const jeonOutput = $('')
-  const useJSON5 = $(false)
+  const useJSON5 = $(true)
   const useClosure = $(false)
   const evalResult = $('')
   const evalContext = $('{}') // Add context for evalJeon
 
 
-  const json = useMemo(() => $$(useJSON5) ? JSON5 : JSON, () => $$(useJSON5))
+  const json = useMemo(() => $$(useJSON5) ? JSON5 : JSON)
 
   // Create observable refs for the contentEditable divs
   const jeonInputRef = $<HTMLPreElement | null>(null)
@@ -91,18 +117,30 @@ const App = () => {
     updateHighlightedJeonOutput()
   })
 
+  // Utility function to properly encode HTML entities
+  const encodeHtmlEntities = (str: string): string => {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  }
+
   // Effect to update the DOM with highlighted content
   useEffect(() => {
     const tsOutputElement = $$(tsOutputCodeRef)
     if (tsOutputElement) {
-      tsOutputElement.innerHTML = $$(highlightedJsOutput)
+      const escapedOutput = encodeHtmlEntities($$(highlightedJsOutput))
+      tsOutputElement.innerHTML = escapedOutput
     }
   })
 
   useEffect(() => {
     const jeonOutputElement = $$(jeonOutputCodeRef)
     if (jeonOutputElement) {
-      jeonOutputElement.innerHTML = $$(highlightedJeonOutput)
+      const escapedOutput = encodeHtmlEntities($$(highlightedJeonOutput))
+      jeonOutputElement.innerHTML = escapedOutput
     }
   })
 
@@ -338,25 +376,23 @@ const App = () => {
   // New example for class declaration
   const jeonExample8 = `{
   "class Person": {
-    "constructor(name)": {
-      "function(name)": [
-        {
-          "=": [
-            {
-              ".": [
-                "@this",
-                "name"
-              ]
-            },
-            "@name"
-          ]
-        }
-      ]
-    },
-    "greet()": {
-      "function()": [
-        {
-          "return": {
+    "constructor(name)": [
+      {
+        "=": [
+          {
+            ".": [
+              "@this",
+              "name"
+            ]
+          },
+          "@name"
+        ]
+      }
+    ],
+    "greet()": [
+      {
+        "return": {
+          "(": {
             "+": [
               "Hello, ",
               {
@@ -368,8 +404,8 @@ const App = () => {
             ]
           }
         }
-      ]
-    }
+      }
+    ]
   }
 }`
   const tsExample8 = `class Person {
@@ -386,33 +422,29 @@ const App = () => {
   "@@": {
     "Animal": {
       "class": {
-        "constructor(species)": {
-          "function(species)": [
-            {
-              "=": [
-                {
-                  ".": [
-                    "@this",
-                    "species"
-                  ]
-                },
-                "@species"
-              ]
-            }
-          ]
-        },
-        "getType()": {
-          "function()": [
-            {
-              "return": {
+        "constructor(species)": [
+          {
+            "=": [
+              {
                 ".": [
                   "@this",
                   "species"
                 ]
-              }
+              },
+              "@species"
+            ]
+          }
+        ],
+        "getType()": [
+          {
+            "return": {
+              ".": [
+                "@this",
+                "species"
+              ]
             }
-          ]
-        }
+          }
+        ]
       }
     }
   }

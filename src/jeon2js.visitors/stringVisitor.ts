@@ -9,6 +9,16 @@ export function visitString(jeon: string, jsonImpl?: typeof JSON): string {
         return ';'  // Empty statements should produce a semicolon
     }
 
+    // Handle BigInt strings - strings that end with 'n' and represent BigInt literals
+    if (jeon.endsWith('n') && jeon.length > 1) {
+        // Check if the part before 'n' is a valid integer (possibly negative)
+        const bigintPart = jeon.slice(0, -1)
+        if (/^-?\d+$/.test(bigintPart)) {
+            // This is a BigInt literal, return it without quotes
+            return jeon
+        }
+    }
+
     // Handle references - no shortcuts allowed, must use explicit '.' operator
     if (jeon.startsWith('@')) {
         const cleanName = jeon.substring(1)

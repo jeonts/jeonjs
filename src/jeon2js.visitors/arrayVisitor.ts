@@ -19,8 +19,16 @@ export function visitArray(jeon: any[], visit: (item: any) => string, jsonImpl?:
     }
 
     // Check if it's a special construct
-    const firstElement = jeon[0]
-    if (typeof firstElement === 'object' && firstElement !== null) {
+    // Only treat as sequencing block if it contains actual statement objects
+    const hasStatementObjects = jeon.some(item =>
+        typeof item === 'object' && item !== null &&
+        (item['function()'] || item['const'] || item['let'] || item['var'] ||
+            item['if'] || item['while'] || item['for'] ||
+            item['switch'] || item['try'] || item['return'] ||
+            item['break'] || item['continue'] || item['throw'] || item['debugger'] ||
+            item['class'] || item['import'] || item['export']))
+
+    if (hasStatementObjects) {
         // Handle sequencing blocks
         const statementResults = jeon.map(expr => {
             const result = visit(expr)
@@ -54,5 +62,29 @@ export function visitArray(jeon: any[], visit: (item: any) => string, jsonImpl?:
         }
     }
 
-    return `[${jeon.map(item => visit(item)).join(', ')}]`
+    // Process array elements
+    const elementStrings = jeon.map(item => visit(item))
+
+    // Join elements, handling special formatting for comments
+    const formattedElements = []
+    for (let i = 0; i < elementStrings.length; i++) {
+        const element = elementStrings[i]
+
+        // Add the element
+        formattedElements.push(element)
+
+        // Add separator after the element (except for the last one)
+        if (i < elementStrings.length - 1) {
+            // Check if this element is a comment (starts with newline and //)
+            if (element && element.match(/^\n\/\//) && element.endsWith('\n')) {
+                // For comment elements, add a comma and newline
+                formattedElements.push(',\n')
+            } else {
+                // For regular elements, add a comma and space
+                formattedElements.push(', ')
+            }
+        }
+    }
+
+    return `[${formattedElements.join('')}]`
 }

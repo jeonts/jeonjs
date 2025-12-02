@@ -1,6 +1,7 @@
 import * as acorn from 'acorn'
 import jsx from 'acorn-jsx'
 import { ast2jeon } from './js2jeon.visitors/ast2jeon'
+import { positionCommentsInAST } from './js2jeon.visitors/commentPositioner'
 
 /**
  * Converts JavaScript code to JEON (JSON-based Executable Object Notation)
@@ -23,14 +24,11 @@ export function js2jeon(code: string, options?: { json?: typeof JSON }): any {
             onComment: comments     // Collect comments
         })
 
-        // Inject comments into the AST
-        const astWithComments = {
-            ...ast,
-            comments: comments
-        }
+        // Position comments within the AST based on their positions
+        const astWithPositionedComments = positionCommentsInAST(ast, comments, new Set())
 
         // Convert AST to JEON
-        return ast2jeon(astWithComments, options)
+        return ast2jeon(astWithPositionedComments, options)
     } catch (error: any) {
         console.error('Error parsing JavaScript/JavaScript code:', error)
         // Return error message in JEON format instead of null

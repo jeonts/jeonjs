@@ -14,4 +14,5 @@ export interface VisitorRegistry {
     visitPropertyAccess: (op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure?: boolean) => string
     visitSequencing: (op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure?: boolean) => string
     visitSwitch: (operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure?: boolean) => string
+    visitComment: (node: any) => string
 }

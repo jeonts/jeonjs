@@ -6,6 +6,7 @@
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
  * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
+import { visitArray } from './arrayVisitor'
 export function visitOperator(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
     // Handle unary operators
     switch (op) {
@@ -54,8 +55,8 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
         case '[':
             // Handle array literals
             if (Array.isArray(operands)) {
-                const elements = operands.map(operand => visit(operand)).join(', ')
-                return `[${elements}]`
+                // Use the array visitor to properly handle sparse arrays
+                return visitArray(operands, visit)
             }
             return '[]'
 
@@ -66,22 +67,22 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
         case '//':
             // Handle comment operator - return JavaScript comment
             if (typeof operands === 'string') {
-                return `// ${operands}`
+                return `\n//${operands}\n`
             }
-            return '// (comment)'
+            return '\n//(comment)\n'
 
         case '/*':
             // Handle multiline block comment operator - return JavaScript block comment
             if (Array.isArray(operands)) {
                 // For array of strings, join with newlines to create multiline comment
                 const commentText = operands.join('\n')
-                return `/*${commentText}*/`
+                return `\n/*${commentText}*/\n`
             } else if (typeof operands === 'string') {
                 // For single string, create single-line block comment
-                return `/*${operands}*/`
+                return `\n/*${operands}*/\n`
             }
             // Fallback for invalid operands
-            return '/* (comment) */'
+            return '\n/* (comment) */\n'
 
         case '/ /':
             // Handle regex operator

@@ -1,1 +1,0 @@
-import { js2jeon } from './src/js2jeon'; const code = '({bigint: 1234567890123456789n})'; try { const jeon = js2jeon(code); console.log('JEON:', JSON.stringify(jeon, null, 2)); } catch (error) { console.log('Error:', error.message); }

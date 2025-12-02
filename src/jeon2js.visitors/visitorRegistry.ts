@@ -30,5 +30,5 @@ export const visitorRegistry: VisitorRegistry = {
     visitObject,
     visitPropertyAccess,
     visitSequencing,
-    visitSwitch
+    visitSwitch,
 }

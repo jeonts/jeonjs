@@ -47,6 +47,10 @@ export function visitVariableDeclaration(op: string, operands: any, visit: (item
         // Handle uninitialized variables
         else if (value === undefined || value === '@undefined' || value === null) {
             uninitializedVars.push(name)
+        }
+        // Handle explicit undefined with @@undefined
+        else if (value === '@@undefined') {
+            initializedVars.push({ name, value: '@undefined' }) // Convert to @undefined for proper generation
         } else {
             // Handle initialized variables
             initializedVars.push({ name, value })

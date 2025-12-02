@@ -10,7 +10,19 @@ export function visitVariableDeclaration(node: acorn.VariableDeclaration, option
     const declarations: Record<string, any> = {}
     for (const decl of node.declarations) {
         if (decl.id.type === 'Identifier') {
-            declarations[(decl.id as acorn.Identifier).name] = decl.init ? ast2jeon(decl.init, options) : '@undefined'
+            if (decl.init) {
+                // Check if this is an explicit undefined assignment
+                const initValue = ast2jeon(decl.init, options)
+                if (initValue === '@undefined') {
+                    // Explicit undefined assignment - use @@undefined to distinguish
+                    declarations[(decl.id as acorn.Identifier).name] = '@@undefined'
+                } else {
+                    declarations[(decl.id as acorn.Identifier).name] = initValue
+                }
+            } else {
+                // Uninitialized variable - use @undefined
+                declarations[(decl.id as acorn.Identifier).name] = '@undefined'
+            }
         }
     }
     return {

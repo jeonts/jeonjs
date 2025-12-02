@@ -1,0 +1,1 @@
+import { jeon2js } from '../jeon2js'; const operatorObj = { 'bigint': '1234567890123456789' }; console.log('Operator object:', JSON.stringify(operatorObj, null, 2)); const visitResult = jeon2js(operatorObj); console.log('Visit result:', visitResult)

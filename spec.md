@@ -803,7 +803,6 @@ The implementation of the Member Access (`.`) and Function Execution (`()`) oper
 ## Detailed Operator Examples
 
 ### 1. Parentheses Operator `(`
-
 The parentheses operator is used to group expressions and control evaluation order.
 
 **JEON Structure:**
@@ -841,7 +840,6 @@ JavaScript equivalent: `(1 + 2)`
 JavaScript equivalent: `(1 + 2) * 3`
 
 ### 2. Function Call Operator `()`
-
 The function call operator is used to invoke functions. It takes an array where the first element is the function reference and subsequent elements are arguments.
 
 **JEON Structure:**
@@ -1447,3 +1445,209 @@ JEON is designed with security in mind. The explicit nature of all operations me
 2. No dynamic property access shortcuts - all member access must use the explicit `.` operator
 3. All operations are explicitly represented in the JSON structure, making validation possible
 4. The evalJeon function provides a safe evaluation environment with a restricted context
+
+### Special Value Representations
+
+JEON provides special representations for certain JavaScript values that require distinction for proper serialization and deserialization.
+
+#### Undefined Values
+
+In JEON, undefined values are represented with special sentinel strings to distinguish between different semantic meanings:
+
+| JEON Representation | JavaScript Equivalent | Description |
+|---------------------|-----------------------|-------------|
+| `@undefined` | uninitialized variable | Represents an uninitialized variable declaration (e.g., `let x;`) |
+| `@@undefined` | explicit undefined assignment | Represents an explicit undefined assignment (e.g., `let x = undefined;`) |
+
+**Examples:**
+
+1. Uninitialized variable:
+```json
+{
+  "@": {
+    "x": "@undefined"
+  }
+}
+```
+JavaScript equivalent: `let x;`
+
+2. Explicit undefined assignment:
+```json
+{
+  "@": {
+    "x": "@@undefined"
+  }
+}
+```
+JavaScript equivalent: `let x = undefined;`
+
+3. Const with explicit undefined:
+```json
+{
+  "@@": {
+    "CONST_UNDEFINED": "@@undefined"
+  }
+}
+```
+JavaScript equivalent: `const CONST_UNDEFINED = undefined;`
+
+#### Sparse Arrays
+
+Sparse arrays in JEON use special representations to distinguish between holes and explicit undefined values:
+
+| JEON Representation | JavaScript Equivalent | Description |
+|---------------------|-----------------------|-------------|
+| `@undefined` | array hole (consecutive commas) | Represents a hole in a sparse array (e.g., `[1,,2]`) |
+| `@@undefined` | explicit undefined in array | Represents an explicit undefined value in an array (e.g., `[1,undefined,2]`) |
+
+**Example:**
+```json
+{
+  "@@": {
+    "sparsedArray": {
+      "[": [
+        0,
+        "@undefined",
+        "@undefined",
+        "@@undefined",
+        0
+      ]
+    }
+  }
+}
+```
+JavaScript equivalent: `const sparsedArray = [0, , , undefined, 0];`
+
+### Comment Operators
+
+JEON supports multiple comment operators to represent different types of JavaScript comments.
+
+#### Single-line Comments (`//`)
+
+The `//` operator is used to represent JavaScript single-line comments.
+
+**JEON Structure:**
+```json
+{
+  "//": "comment text"
+}
+```
+
+**Example:**
+```json
+{
+  "//": "This is a single-line comment"
+}
+```
+JavaScript equivalent: `// This is a single-line comment`
+
+#### Multi-line Block Comments (`/*`)
+
+The `/*` operator is used to represent JavaScript multi-line block comments. It supports both array and string formats.
+
+**JEON Structure:**
+```json
+{
+  "/*": ["line1", "line2", "line3"]
+}
+```
+or
+```json
+{
+  "/*": "single line comment"
+}
+```
+
+**Examples:**
+
+1. Multi-line block comment:
+```json
+{
+  "/*": [
+    " This is a multi-line",
+    " block comment",
+    " with multiple lines "
+  ]
+}
+```
+JavaScript equivalent:
+```javascript
+/* This is a multi-line
+ block comment
+ with multiple lines */
+```
+
+2. Single-line block comment:
+```json
+{
+  "/*": " This is a single-line block comment "
+}
+```
+JavaScript equivalent: `/* This is a single-line block comment */`
+
+### Regular Expression Operator (`/ /`)
+
+The `/ /` operator is used to represent JavaScript regular expressions.
+
+**JEON Structure:**
+```json
+{
+  "/ /": {
+    "pattern": "regex pattern",
+    "flags": "regex flags"
+  }
+}
+```
+
+**Example:**
+```json
+{
+  "/ /": {
+    "pattern": "abc",
+    "flags": "gi"
+  }
+}
+```
+JavaScript equivalent: `/abc/gi`
+
+### BigInt Support
+
+JEON supports BigInt values through string representation when using JSON5. BigInt values are represented as strings with an 'n' suffix to indicate they are BigInt literals.
+
+**JEON Structure:**
+```json
+{
+  "bigintPropertyName": "1234567890123456789n"
+}
+```
+
+**Example:**
+```json
+{
+  "@@": {
+    "BIG_NUMBER": "1234567890123456789n"
+  }
+}
+```
+JavaScript equivalent: `const BIG_NUMBER = 1234567890123456789n;`
+
+**Implementation Details:**
+BigInt support is enabled through the `@mainnet-pat/json5-bigint` library which extends JSON5 with BigInt serialization capabilities. To use BigInt support:
+
+1. Import JSON5 with BigInt support:
+   ```javascript
+   import JSON5 from '@mainnet-pat/json5-bigint';
+   ```
+
+2. Enable BigInt in global options:
+   ```javascript
+   globalThis.JSON5Options = Object.assign(globalThis.JSON5Options ?? {}, { bigint: true });
+   ```
+
+3. Pass the JSON5 implementation to js2jeon and jeon2js:
+   ```javascript
+   const jeon = js2jeon(code, { json: JSON5 });
+   const js = jeon2js(jeon, { json: JSON5 });
+   ```
+
+**Note:** Regular JSON does not support BigInt serialization. When using standard JSON, BigInt values cannot be properly serialized and will result in errors.

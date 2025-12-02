@@ -9,7 +9,7 @@
     "build:lib": "vite build --mode lib",
     "build:app": "vite build",
     "build": "pnpm build:lib && pnpm build:app",
-    "dev": "vite",
+    "dev": "vite --port 5273",
     "preview": "vite preview",
     "example": "tsx src/example.ts",
     "example:closure": "tsx src/example-closure.ts",
