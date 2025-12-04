@@ -1,0 +1,567 @@
+=== Practical Example: Secure Plugin System ===
+
+Example 1: User Plugin - Data Processor
+User Plugin JEON:
+{
+  "function processData(data)": [
+    {
+      "@": {
+        "result": {
+          "*": [
+            "@data",
+            2
+          ]
+        }
+      }
+    },
+    {
+      "return": "@result"
+    }
+  ]
+}
+
+Generated JavaScript (Regular Mode):
+function processData(data) {
+  let result = data * 2
+  return result
+}
+
+Generated JavaScript (Closure Mode - Safe):
+function processData(data) { return evalJeon([
+  {
+    "@": {
+      "result": {
+        "*": [
+          "@data",
+          2
+        ]
+      }
+    }
+  },
+  {
+    "return": "@result"
+  }
+], {data: data}); }
+
+Closure Output wrapped with IIFE:
+(() => {
+  function processData(data) { return evalJeon([
+    {
+      "@": {
+        "result": {
+          "*": [
+            "@data",
+            2
+          ]
+        }
+      }
+    },
+    {
+      "return": "@result"
+    }
+  ], {data: data}); }
+  return {processData};
+})()
+
+Evaluated result (should contain processData function):
+Contains processData function
+
+Calling processData(21):
+Result: 42
+
+
+Example 2: Mathematical Operations Plugin
+Math Plugin JEON:
+{
+  "function calculateHypotenuse(x, y)": [
+    {
+      "return": {
+        "()": [
+          {
+            ".": [
+              "@Math",
+              "sqrt"
+            ]
+          },
+          {
+            "+": [
+              {
+                "()": [
+                  {
+                    ".": [
+                      "@Math",
+                      "pow"
+                    ]
+                  },
+                  "@x",
+                  2
+                ]
+              },
+              {
+                "()": [
+                  {
+                    ".": [
+                      "@Math",
+                      "pow"
+                    ]
+                  },
+                  "@y",
+                  2
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+Generated JavaScript (Regular Mode):
+function calculateHypotenuse(x, y) {
+  return Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2))
+}
+
+Generated JavaScript (Closure Mode - Safe):
+function calculateHypotenuse(x, y) { return evalJeon([
+  {
+    "return": {
+      "()": [
+        {
+          ".": [
+            "@Math",
+            "sqrt"
+          ]
+        },
+        {
+          "+": [
+            {
+              "()": [
+                {
+                  ".": [
+                    "@Math",
+                    "pow"
+                  ]
+                },
+                "@x",
+                2
+              ]
+            },
+            {
+              "()": [
+                {
+                  ".": [
+                    "@Math",
+                    "pow"
+                  ]
+                },
+                "@y",
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+], {x: x, y: y}); }
+
+Closure Output wrapped with IIFE:
+(() => {
+  function calculateHypotenuse(x, y) { return evalJeon([
+    {
+      "return": {
+        "()": [
+          {
+            ".": [
+              "@Math",
+              "sqrt"
+            ]
+          },
+          {
+            "+": [
+              {
+                "()": [
+                  {
+                    ".": [
+                      "@Math",
+                      "pow"
+                    ]
+                  },
+                  "@x",
+                  2
+                ]
+              },
+              {
+                "()": [
+                  {
+                    ".": [
+                      "@Math",
+                      "pow"
+                    ]
+                  },
+                  "@y",
+                  2
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ], {x: x, y: y}); }
+  return {calculateHypotenuse};
+})()
+
+Evaluated result (should contain calculateHypotenuse function):
+Contains calculateHypotenuse function
+
+Calling calculateHypotenuse(3, 4):
+Result: 5
+
+
+Example 3: Code Isolation with convertToIIFE
+
+Code Sample 1:
+const value = 42; value * 2;
+Isolated with IIFE:
+(() => {
+  return value * 2;
+})()
+
+Code Sample 2:
+{ name: 'Plugin', version: '1.0', active: true }
+Isolated with IIFE:
+(() => {
+  return { name: 'Plugin', version: '1.0', active: true };
+})()
+
+Code Sample 3:
+const items = [1, 2, 3, 4, 5]; items.filter(x => x > 2).map(x => x * 2);
+Isolated with IIFE:
+(() => {
+  return items.filter(x => x > 2).map(x => x * 2);
+})()
+
+
+=== Security Benefits ===
+1. Closure mode prevents access to dangerous globals like window, document, process
+2. IIFE conversion ensures proper scoping and prevents variable leakage
+3. Together they create a secure sandbox for executing dynamic code
+4. evalJeon provides controlled execution with whitelisted context
+
+
+=== Additional Function Types Tests ===
+
+1. Anonymous Function Test:
+JEON Input:
+{
+  "@": {
+    "myFunc": {
+      "function()": [
+        {
+          "return": "Hello from anonymous function"
+        }
+      ]
+    }
+  }
+}
+
+Generated JavaScript (Regular Mode):
+const myFunc = function() {
+  return "Hello from anonymous function"
+}
+
+Generated JavaScript (Closure Mode - Safe):
+const myFunc = function() { return evalJeon([
+  {
+    "return": "Hello from anonymous function"
+  }
+], {}); }
+
+Closure Output wrapped with IIFE:
+(() => {
+  const myFunc = function() { return evalJeon([
+    {
+      "return": "Hello from anonymous function"
+    }
+  ], {}); }
+  return myFunc;
+})()
+
+Evaluated result:
+[Function: myFunc]
+
+
+2. Class Definition Test:
+JEON Input:
+{
+  "class Calculator": {
+    "add(a, b)": [
+      {
+        "return": {
+          "+": [
+            "@a",
+            "@b"
+          ]
+        }
+      }
+    ],
+    "multiply(a, b)": [
+      {
+        "return": {
+          "*": [
+            "@a",
+            "@b"
+          ]
+        }
+      }
+    ]
+  }
+}
+
+Generated JavaScript (Regular Mode):
+class Calculator {
+  add(a, b) {
+    return a + b
+  }
+  multiply(a, b) {
+    return a * b
+  }
+}
+
+Generated JavaScript (Closure Mode - Safe):
+class Calculator {
+  add(a, b) { return evalJeon([{"return":{"+":["@a","@b"]}}], {"a": a, "b": b, this: this}); }
+  multiply(a, b) { return evalJeon([{"return":{"*":["@a","@b"]}}], {"a": a, "b": b, this: this}); }
+}
+
+Closure Output wrapped with IIFE:
+(() => {
+  class Calculator {
+    add(a, b) { return evalJeon([{"return":{"+":["@a","@b"]}}], {"a": a, "b": b, this: this}); }
+    multiply(a, b) { return evalJeon([{"return":{"*":["@a","@b"]}}], {"a": a, "b": b, this: this}); }
+  }
+  return class Calculator {
+  add(a, b) { return evalJeon([{"return":{"+":["@a","@b"]}}], {"a": a, "b": b, this: this}); }
+  multiply(a, b) { return evalJeon([{"return":{"*":["@a","@b"]}}], {"a": a, "b": b, this: this}); }
+};
+})()
+
+Evaluated result:
+[class Calculator]
+
+
+3. Named Class (Assigned Class) Test:
+This represents: const MyClass = class {}
+JEON Input:
+{
+  "@@": {
+    "MyClass": {
+      "class": {
+        "constructor(name)": [
+          {
+            "=": [
+              {
+                ".": [
+                  "@this",
+                  "name"
+                ]
+              },
+              "@name"
+            ]
+          }
+        ],
+        "getName()": [
+          {
+            "return": {
+              ".": [
+                "@this",
+                "name"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+Generated JavaScript (Regular Mode):
+const MyClass = class {
+  constructor(name) {
+    this.name = name
+  }
+  getName() {
+    return this.name
+  }
+}
+
+Generated JavaScript (Closure Mode - Safe):
+const MyClass = class {
+  constructor(name) {
+    this.name = name
+  }
+  getName() { return evalJeon([{"return":{".":["@this","name"]}}], {this: this}); }
+}
+
+Closure Output wrapped with IIFE:
+(() => {
+  const MyClass = class {
+    constructor(name) {
+      this.name = name
+    }
+    getName() { return evalJeon([{"return":{".":["@this","name"]}}], {this: this}); }
+  }
+  return MyClass;
+})()
+
+Evaluated result:
+Got MyClass class
+
+Testing MyClass:
+instance.getName() = TestObject
+
+
+4. Arrow Function Test:
+JEON Input:
+{
+  "(x) =>": {
+    "*": [
+      "@x",
+      "@x"
+    ]
+  }
+}
+
+Generated JavaScript (Regular Mode):
+(x) => x * x
+
+Generated JavaScript (Closure Mode - Safe):
+(x) => evalJeon({"*":["@x","@x"]}, {x: x})
+
+Closure Output wrapped with IIFE:
+(() => {
+  return (x) => evalJeon({"*":["@x","@x"]}, {x: x});
+})()
+
+Evaluated result:
+Got arrow function
+
+Calling arrow function with 5:
+Result: 25
+
+
+5. function myFunc1() Test:
+JEON Input:
+{
+  "function myFunc1()": [
+    {
+      "return": "Hello from myFunc1"
+    }
+  ]
+}
+
+Generated JavaScript (Regular Mode):
+function myFunc1() {
+  return "Hello from myFunc1"
+}
+
+Generated JavaScript (Closure Mode - Safe):
+function myFunc1() { return evalJeon([
+  {
+    "return": "Hello from myFunc1"
+  }
+], {}); }
+
+Closure Output wrapped with IIFE:
+(() => {
+  function myFunc1() { return evalJeon([
+    {
+      "return": "Hello from myFunc1"
+    }
+  ], {}); }
+  return {myFunc1};
+})()
+
+Evaluated result:
+Contains myFunc1 function
+
+Calling myFunc1():
+Result: Hello from myFunc1
+
+
+6. class MyClass1 Test:
+This represents: class MyClass1 {}
+JEON Input:
+{
+  "class MyClass1": {
+    "constructor(name)": [
+      {
+        "=": [
+          {
+            ".": [
+              "@this",
+              "name"
+            ]
+          },
+          "@name"
+        ]
+      }
+    ],
+    "getName()": [
+      {
+        "return": {
+          ".": [
+            "@this",
+            "name"
+          ]
+        }
+      }
+    ]
+  }
+}
+
+Generated JavaScript (Regular Mode):
+class MyClass1 {
+  constructor(name) {
+    this.name = name
+  }
+  getName() {
+    return this.name
+  }
+}
+
+Generated JavaScript (Closure Mode - Safe):
+class MyClass1 {
+  constructor(name) {
+    this.name = name
+  }
+  getName() { return evalJeon([{"return":{".":["@this","name"]}}], {this: this}); }
+}
+
+Closure Output wrapped with IIFE:
+(() => {
+  class MyClass1 {
+    constructor(name) {
+      this.name = name
+    }
+    getName() { return evalJeon([{"return":{".":["@this","name"]}}], {this: this}); }
+  }
+  return class MyClass1 {
+  constructor(name) {
+    this.name = name
+  }
+  getName() { return evalJeon([{"return":{".":["@this","name"]}}], {this: this}); }
+};
+})()
+
+Evaluated result:
+[class MyClass1]
+
+
+=== Summary ===
+All function types (anonymous functions, classes, named classes, arrow functions, named functions)
+work correctly with both regular and closure modes.
+The closure mode provides secure execution through evalJeon wrapping.
+IIFE conversion ensures proper scoping and return value handling.

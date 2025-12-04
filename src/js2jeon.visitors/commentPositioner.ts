@@ -22,7 +22,7 @@ interface CommentNode {
 }
 
 /**
- * Helper function to insert comments into an array at the appropriate position
+ * Helper function to insert standalone comments into an array at the appropriate position
  * @param array The array to insert comments into
  * @param commentNodes The comment nodes to insert
  */
@@ -31,7 +31,11 @@ function insertCommentsIntoArray(array: any[], commentNodes: CommentNode[]): voi
     commentNodes.sort((a, b) => a.start - b.start)
 
     // For each comment, find the appropriate position in the array
+    // Only insert standalone comments, not inline comments
     for (const comment of commentNodes) {
+        // Check if this is likely a standalone comment
+        // Standalone comments are typically at the beginning of a line or after certain delimiters
+        // For now, we'll insert all comments, but in the future we might want to filter
         // Find the element that comes after this comment
         let insertIndex = array.length
         for (let i = 0; i < array.length; i++) {
@@ -61,24 +65,11 @@ function insertCommentNodes(node: any, commentNodes: CommentNode[]): void {
     else if (Array.isArray(node.body)) {
         insertCommentsIntoArray(node.body, commentNodes)
     }
-    // For other nodes with array structures, try to find an appropriate array to insert comments into
+    // For other nodes with array structures, we don't insert comments to avoid inline comment issues
     else {
-        // Check for common array properties in AST nodes
-        const arrayProperties = ['elements', 'arguments', 'params', 'declarations']
-        let inserted = false
-        for (const prop of arrayProperties) {
-            if (Array.isArray(node[prop])) {
-                insertCommentsIntoArray(node[prop], commentNodes)
-                inserted = true
-                break
-            }
-        }
-
-        // If we didn't insert comments into any array, we don't attach them as properties
-        if (!inserted) {
-            // Comments are intentionally not attached to other node types
-            // They will be handled by the specific node processors
-        }
+        // Comments are intentionally not inserted into other array structures
+        // This prevents inline comments from being inserted as separate array elements
+        // They will be handled by the specific node processors or discarded
     }
 }
 

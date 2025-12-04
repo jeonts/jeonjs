@@ -30,7 +30,7 @@
     "@mainnet-pat/json5-bigint": "^2.2.12",
     "acorn-jsx": "^5.3.2",
     "json5": "^2.2.3",
-    "woby": "^1.58.39"
+    "woby": "^1.58.40"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.16",

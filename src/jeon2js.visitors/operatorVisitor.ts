@@ -55,8 +55,52 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
         case '[':
             // Handle array literals
             if (Array.isArray(operands)) {
-                // Use the array visitor to properly handle sparse arrays
-                return visitArray(operands, visit)
+                // For array literals, we want to preserve the elements as array elements, not convert them to statements
+                // Process array elements directly without statement detection logic
+                const elementStrings = operands.map(item => {
+                    // Handle special array element cases for sparse arrays
+                    if (item === '@undefined') {
+                        // @undefined represents a sparse array hole
+                        return null
+                    } else if (item === '@@undefined') {
+                        // @@undefined represents an explicit undefined in the array
+                        return 'undefined'
+                    } else {
+                        return visit(item)
+                    }
+                })
+
+                // Join elements, handling special formatting for comments and sparse arrays
+                const formattedElements = []
+                for (let i = 0; i < elementStrings.length; i++) {
+                    const element = elementStrings[i]
+
+                    // Add the element (or empty slot for sparse arrays)
+                    if (element !== null) {
+                        // Add a space before non-first elements that are not comments
+                        if (formattedElements.length > 0 && !(element && element.match(/^\n\/\//) && element.endsWith('\n'))) {
+                            formattedElements.push(' ')
+                        }
+                        formattedElements.push(element)
+                    }
+
+                    // Add separator after the element (except for the last one)
+                    if (i < elementStrings.length - 1) {
+                        // Check if this element is a comment (starts with newline and //)
+                        if (element && element.match(/^\n\/\//) && element.endsWith('\n')) {
+                            // For comment elements, add a comma and newline
+                            formattedElements.push(',\n')
+                        } else if (element === null) {
+                            // For null elements (sparse holes), just add a comma
+                            formattedElements.push(',')
+                        } else {
+                            // For regular elements, add a comma
+                            formattedElements.push(',')
+                        }
+                    }
+                }
+
+                return `[${formattedElements.join('')}]`
             }
             return '[]'
 

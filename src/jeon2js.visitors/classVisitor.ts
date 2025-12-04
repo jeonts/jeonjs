@@ -49,7 +49,7 @@ export function visitClass(op: string, operands: any, keys: string[], visit: (it
                             if (params.length > 0) {
                                 // Create context object that includes both parameters and this
                                 const contextParams = params.map(p => `"${p}": ${p}`).join(', ')
-                                return `  ${methodName}(${params.join(', ')}) { const ctx = Object.assign({${contextParams}}, {this: this}); return evalJeon(${JSON.stringify(value)}, ctx); }`
+                                return `  ${methodName}(${params.join(', ')}) { return evalJeon(${JSON.stringify(value)}, {${contextParams}, this: this}); }`
                             } else {
                                 return `  ${methodName}(${params.join(', ')}) { return evalJeon(${JSON.stringify(value)}, {this: this}); }`
                             }
@@ -161,7 +161,7 @@ export function visitClass(op: string, operands: any, keys: string[], visit: (it
                             if (params.length > 0) {
                                 // Create context object that includes both parameters and this
                                 const contextParams = params.map(p => `"${p}": ${p}`).join(', ')
-                                return `  ${methodName}(${params.join(', ')}) { const ctx = Object.assign({${contextParams}}, {this: this}); return evalJeon(${JSON.stringify(value)}, ctx); }`
+                                return `  ${methodName}(${params.join(', ')}) { return evalJeon(${JSON.stringify(value)}, {${contextParams}, this: this}); }`
                             } else {
                                 return `  ${methodName}(${params.join(', ')}) { return evalJeon(${JSON.stringify(value)}, {this: this}); }`
                             }

@@ -21,18 +21,27 @@ try {
     console.log(regenerated)
 
     // Verify the JEON structure is correct
+    // Check that uninitialized variables have the "@undefined" sentinel value
     const jeonString = JSON.stringify(jeon)
-    if (jeonString.includes('"@":{}') && jeonString.includes('"@@":{"f":22}')) {
+    if (jeonString.includes('"d":"@undefined"') &&
+        jeonString.includes('"@@":{"f":22}') &&
+        jeonString.includes('"g":"@undefined"')) {
         console.log('\n✅ JEON structure is correct')
     } else {
         console.log('\n❌ JEON structure is incorrect')
+        console.log('Expected to find "@undefined" sentinel values for uninitialized variables')
     }
 
     // Verify the regenerated code is correct
-    if (regenerated.includes('let d;') && regenerated.includes('const f = 22;') && regenerated.includes('let g')) {
+    // Check for the presence of variable declarations with proper formatting
+    if (regenerated.includes('let d') &&
+        regenerated.includes('const f = 22') &&
+        regenerated.includes('let g') &&
+        regenerated.includes('function test()')) {
         console.log('✅ Regenerated code is correct')
     } else {
         console.log('❌ Regenerated code is incorrect')
+        console.log('Expected to find properly formatted variable declarations')
     }
 
 } catch (e: any) {

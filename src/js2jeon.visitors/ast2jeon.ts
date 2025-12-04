@@ -1,5 +1,6 @@
 import * as acorn from 'acorn'
 import { visitorRegistry } from './registry'
+import { visitArrayExpression } from './arrayExpression'
 
 /**
  * Converts an AST node to JEON format
@@ -21,9 +22,7 @@ export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
     // Fallback to the original switch statement for unimplemented visitors
     switch (node.type) {
         case 'ArrayExpression':
-            return (node as acorn.ArrayExpression).elements
-                .filter(element => element !== null)
-                .map(element => ast2jeon(element!, options))
+            return visitArrayExpression(node as acorn.ArrayExpression, options)
 
         case 'ExpressionStatement':
             return ast2jeon((node as acorn.ExpressionStatement).expression, options)

@@ -83,6 +83,20 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                 return result
             }
 
+            // If this is a function declaration, add it to the context so it's available for subsequent statements
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+                const keys = Object.keys(item)
+                const functionDeclarationKey = keys.find(key => key.startsWith('function'))
+                if (functionDeclarationKey) {
+                    // Extract function name from the key
+                    const nameMatch = functionDeclarationKey.match(/function\s+(\w+)/)
+                    if (nameMatch) {
+                        const functionName = nameMatch[1]
+                        context[functionName] = result
+                    }
+                }
+            }
+
             // If this is the last item, return its result
             if (i === jeon.length - 1) {
                 return result

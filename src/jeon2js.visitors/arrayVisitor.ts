@@ -22,11 +22,15 @@ export function visitArray(jeon: any[], visit: (item: any) => string, jsonImpl?:
     // Only treat as sequencing block if it contains actual statement objects
     const hasStatementObjects = jeon.some(item =>
         typeof item === 'object' && item !== null &&
-        (item['function()'] || item['const'] || item['let'] || item['var'] ||
-            item['if'] || item['while'] || item['for'] ||
-            item['switch'] || item['try'] || item['return'] ||
-            item['break'] || item['continue'] || item['throw'] || item['debugger'] ||
-            item['class'] || item['import'] || item['export']))
+        (Object.keys(item).some(key =>
+            key.startsWith('function') || key.startsWith('async function') || key.startsWith('function*') ||
+            key === '@' || key === '@@' ||
+            key === 'if' || key === 'while' || key === 'for' ||
+            key === 'switch' || key === 'try' || key === 'return' ||
+            key === 'break' || key === 'continue' || key === 'throw' || key === 'debugger' ||
+            key === 'class' || key === 'import' || key === 'export' ||
+            key === '()' || key.endsWith('=>')
+        )))
 
     if (hasStatementObjects) {
         // Handle sequencing blocks
@@ -35,6 +39,10 @@ export function visitArray(jeon: any[], visit: (item: any) => string, jsonImpl?:
             // Handle empty statements - already a semicolon, don't add another
             if (result === ';') {
                 return ';'
+            }
+            // Don't add semicolons to comments (they already have proper formatting with newlines)
+            if (result.startsWith('\n//') && result.endsWith('\n')) {
+                return result
             }
             // Don't add semicolons to function declarations or variable declarations
             if (result.trim().startsWith('function') || result.trim().startsWith('const ') || result.trim().startsWith('let ') || result.trim().startsWith('var ')) {
@@ -63,15 +71,32 @@ export function visitArray(jeon: any[], visit: (item: any) => string, jsonImpl?:
     }
 
     // Process array elements
-    const elementStrings = jeon.map(item => visit(item))
+    const elementStrings = jeon.map(item => {
+        // Handle special array element cases for sparse arrays
+        if (item === '@undefined') {
+            // @undefined represents a sparse array hole
+            return null
+        } else if (item === '@@undefined') {
+            // @@undefined represents an explicit undefined in the array
+            return 'undefined'
+        } else {
+            return visit(item)
+        }
+    })
 
-    // Join elements, handling special formatting for comments
+    // Join elements, handling special formatting for comments and sparse arrays
     const formattedElements = []
     for (let i = 0; i < elementStrings.length; i++) {
         const element = elementStrings[i]
 
-        // Add the element
-        formattedElements.push(element)
+        // Add the element (or empty slot for sparse arrays)
+        if (element !== null) {
+            // Add a space before non-first elements that are not comments
+            if (formattedElements.length > 0 && !(element && element.match(/^\n\/\//) && element.endsWith('\n'))) {
+                formattedElements.push(' ')
+            }
+            formattedElements.push(element)
+        }
 
         // Add separator after the element (except for the last one)
         if (i < elementStrings.length - 1) {
@@ -79,9 +104,12 @@ export function visitArray(jeon: any[], visit: (item: any) => string, jsonImpl?:
             if (element && element.match(/^\n\/\//) && element.endsWith('\n')) {
                 // For comment elements, add a comma and newline
                 formattedElements.push(',\n')
+            } else if (element === null) {
+                // For null elements (sparse holes), just add a comma
+                formattedElements.push(',')
             } else {
-                // For regular elements, add a comma and space
-                formattedElements.push(', ')
+                // For regular elements, add a comma
+                formattedElements.push(',')
             }
         }
     }

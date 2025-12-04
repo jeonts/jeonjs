@@ -33,37 +33,99 @@ export function visitObject(keys: string[], jeon: any, visit: (item: any) => str
     if (hasSpread) {
         // Handle object with spread operators
         const entries = []
-        // Iterate through keys in their original order to preserve position of spread operators
+        const formattedEntries = []
+
+        // First, format all entries and check if any need line breaks
+        let needsLineBreaks = false
         for (const key of keys) {
-            const value = jeon[key]
+            let formattedValue
             if (key === '...') {
-                entries.push(`...${visit(value)}`)
+                formattedValue = `...${visit(jeon[key])}`
             } else if (key.startsWith('...')) {
                 // Handle multiple spread operators (...1, ...2, etc.)
-                entries.push(`...${visit(value)}`)
+                formattedValue = `...${visit(jeon[key])}`
             } else {
-                entries.push(`${formatKey(key)}:${visit(value)}`)
+                formattedValue = `${formatKey(key)}:${visit(jeon[key])}`
+            }
+            formattedEntries.push(formattedValue)
+
+            // Check if this value contains spaces (multi-word) or newlines
+            if (formattedValue.includes(' ') || formattedValue.includes('\n')) {
+                needsLineBreaks = true
             }
         }
-        return `{${entries.join(',')}}`
+
+        // Then build the entries with proper formatting
+        for (let i = 0; i < formattedEntries.length; i++) {
+            const entry = formattedEntries[i]
+            if (needsLineBreaks && i < formattedEntries.length - 1) {
+                // For objects with multi-word values, put comma on next line
+                entries.push(entry + ',\n')
+            } else {
+                // For single-word values or last entry, keep commas on same line
+                entries.push(entry)
+            }
+        }
+
+        if (needsLineBreaks) {
+            // For objects with multi-word values, format with line breaks
+            return `{${entries.join('')}}`
+        } else {
+            // All entries are single line, join with commas
+            return `{${entries.join(',')}}`
+        }
     }
 
     // Regular object handling
-    const entries = keys.map(key => {
+    const entries = []
+    const formattedEntries = []
+
+    // First, format all entries and check if any need line breaks
+    let needsLineBreaks = false
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]
         const value = jeon[key]
         // Handle synthetic comment nodes in objects
         if (key.startsWith('__COMMENT_') && value && typeof value === 'object' && (value as any).__comment__) {
             // This is a synthetic comment node, format it properly
             const comment = value as any
             if (comment.type === 'Line') {
-                // Add a newline before and after the comment for proper formatting
-                return `\n//${comment.value}\n`
+                // For inline comments, format without newlines so they stay with the previous property
+                formattedEntries.push(` //${comment.value}`)
             } else if (comment.type === 'Block') {
                 // Add a newline before and after the comment for proper formatting
-                return `\n/*${comment.value}*/\n`
+                formattedEntries.push(`\n/*${comment.value}*/\n`)
             }
+            continue
         }
-        return `${formatKey(key)}:${visit(value)}`
-    })
-    return `{${entries.join(',')}}`
+
+        const formattedValue = visit(value)
+        const entry = `${formatKey(key)}:${formattedValue}`
+        formattedEntries.push(entry)
+
+        // Check if this value contains spaces (multi-word) or newlines
+        if (formattedValue.includes(' ') || formattedValue.includes('\n')) {
+            needsLineBreaks = true
+        }
+    }
+
+    // Then build the entries with proper formatting
+    for (let i = 0; i < formattedEntries.length; i++) {
+        const entry = formattedEntries[i]
+        if (needsLineBreaks && i < formattedEntries.length - 1) {
+            // For objects with multi-word values, put comma on next line
+            entries.push(entry + ',\n')
+        } else {
+            // For single-word values or last entry, keep commas on same line
+            entries.push(entry)
+        }
+    }
+
+    if (needsLineBreaks) {
+        // For objects with multi-word values, format with line breaks
+        return `{${entries.join('')}}`
+    } else {
+        // All entries are single line, join with commas
+        return `{${entries.join(',')}}`
+    }
 }

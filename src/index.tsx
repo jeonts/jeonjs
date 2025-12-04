@@ -10,6 +10,11 @@ import 'prismjs/themes/prism.css'
 // Import language components for syntax highlighting (keeping only one JavaScript import)
 import 'prismjs/components/prism-javascript'
 import 'prismjs/components/prism-json'
+// Import Acorn for IIFE detection
+import * as acorn from 'acorn'
+import jsx from 'acorn-jsx'
+// Import IIFE conversion function
+import { convertToIIFE } from './iifeConverter'
 
 
 globalThis.JSON5Options = Object.assign(globalThis.JSON5Options ?? {}, { bigint: true })
@@ -27,8 +32,8 @@ const App = () => {
 const item = { foo: 1 };
 
 return {
-  date: new /* Date */ Date("2025-01-01T00:00:00.000Z"),
-  regexp2: /* hello */ /hello world/,
+  date: new /* Date (not supported) */ Date("2025-01-01T00:00:00.000Z"),
+  regexp2: /* hello (not supported) */ /hello world/,
   regexp: /hello world/gi,
   error: new Error("Something went wrong", { cause: 404 }),
   url: new URL("https://example.com/path?query=value"),
@@ -37,20 +42,21 @@ return {
   symbol: Symbol.for("test"), // end of line
   undefined: undefined,
   // None of those are handled by normal JSON.stringify
-  specialNumbers: [Infinity, /* negative */ -Infinity, // end of inline
+  specialNumbers: [Infinity, /* negative (not supported) */ -Infinity, // end of inline
    -0, NaN],
   someData: new Uint8Array([1, 2, 3, 4, 5]),
   set: new Set([1, 2, 3]),
-  map: new Map([[1, 1], // end of line 
+  map: new Map([[1, 1], // end of line
   [2, 2]]),
   sameRefs: [item, item, item],
-  sparsedArray: [0,, /* in array */, undefined, 0]
+  sparsedArray: [0,,, undefined, 0],
 }
     `)
   const jsOutput = $('')
   const jeonOutput = $('')
   const useJSON5 = $(true)
   const useClosure = $(false)
+  const useIIFE = $(false)
   const evalResult = $('')
   const evalContext = $('{}') // Add context for evalJeon
 
@@ -220,7 +226,13 @@ return {
       const jeon = $$(json).parse(currentValue)
       // Pass the JSON implementation and closure option to jeon2js
       // Note: We do NOT format the output in 1 line even when closure is checked
-      const code = jeon2js(jeon, { json: $$(json), closure: useClosure() })
+      let code = jeon2js(jeon, { json: $$(json) as unknown as JSON, closure: useClosure() })
+
+      // If useIIFE is enabled, convert the output to IIFE format
+      if ($$(useIIFE)) {
+        code = convertToIIFE(code)
+      }
+
       console.log('Converted JavaScript code:', code)
       jsOutput(code)
     } catch (error: any) {
@@ -238,11 +250,58 @@ return {
       // Auto-wrap JavaScript code to make it parseable
       let codeToParse = currentValue as string
       let originalInput = codeToParse
+
+      // Check for IIFE pattern: (function() {...})() or (() => {...})() using Acorn
+      try {
+        const Parser = acorn.Parser.extend(jsx())
+        const ast: any = Parser.parse(codeToParse, {
+          ecmaVersion: 'latest',
+          sourceType: 'module',
+          allowReturnOutsideFunction: true,
+          preserveParens: true
+        })
+
+        // Check if the top-level node is an expression statement containing a call expression
+        // which calls a function expression - this is the pattern of an IIFE
+        if (ast.body.length === 1 &&
+          ast.body[0].type === 'ExpressionStatement' &&
+          ast.body[0].expression.type === 'CallExpression' &&
+          ast.body[0].expression.arguments.length === 0) { // No arguments to the IIFE call
+
+          // Get the callee, which might be wrapped in parentheses
+          let callee = ast.body[0].expression.callee
+
+          // If it's a parenthesized expression, get the inner expression
+          if (callee.type === 'ParenthesizedExpression') {
+            callee = callee.expression
+          }
+
+          // Check if the callee is a function expression or arrow function
+          if (callee.type === 'FunctionExpression' || callee.type === 'ArrowFunctionExpression') {
+            // Extract the function part by removing the outer call parentheses
+            // We need to find the source of just the function expression
+            const functionStart = callee.start
+            const functionEnd = callee.end
+            const functionCode = codeToParse.substring(functionStart, functionEnd)
+
+            codeToParse = functionCode  // Use just the function part
+            // Update the input to show the unwrapped version
+            jsInput(codeToParse)
+            if (refElement) {
+              refElement.textContent = codeToParse
+            }
+          }
+        }
+      } catch (e) {
+        // If parsing fails, it's not a valid IIFE or not parsable, continue with original code
+        console.log('Failed to parse as IIFE, using original code')
+      }
+
       let jeon
 
       try {
         // First try to parse as-is
-        jeon = js2jeon(codeToParse, { json: $$(json) })
+        jeon = js2jeon(codeToParse, { json: $$(json) as unknown as JSON })
 
         // Check if result is a labeled statement, which usually means we need wrapping
         if (jeon === '[LabeledStatement]') {
@@ -252,7 +311,7 @@ return {
         // If parsing fails or produces a labeled statement, try wrapping with parentheses
         try {
           const wrappedCode = `(${codeToParse})`
-          const wrappedJeon = js2jeon(wrappedCode, { json: $$(json) })
+          const wrappedJeon = js2jeon(wrappedCode, { json: $$(json) as unknown as JSON })
 
           // If successful and not a labeled statement, update the input and use the wrapped result
           if (wrappedJeon !== '[LabeledStatement]') {
@@ -280,7 +339,7 @@ return {
         }
       }
 
-      const formatted = $$(json).stringify(jeon, null, 2)
+      const formatted = $$(json).stringify(jeon, undefined, 2)
       console.log('Converted JEON:', formatted)
       jeonOutput(formatted)
       console.log('JEON output set to:', formatted)
@@ -474,6 +533,28 @@ return {
 }`
   const tsExample10 = `let a = {1:2, 2:3, ...{3:3, 4:4}, 5:5};`
 
+  // New example for IIFE (Immediately Invoked Function Expression)
+  const jeonExample11 = `{
+  "function()": [
+    {
+      "return": "Hello, World!"
+    }
+  ]
+}`
+  const tsExample11 = `(function() { return "Hello, World!"; })();`
+
+  // New example for IIFE with parameters
+  const jeonExample12 = `{
+  "function(name)": [
+    {
+      "return": {
+        "+": ["Hello, ", "@name"]
+      }
+    }
+  ]
+}`
+  const tsExample12 = `(function(name) { return "Hello, " + name; })("JEON");`
+
   // Helper functions for copy/paste operations
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(err => {
@@ -585,6 +666,18 @@ return {
           />
           <label for="useClosure" class="text-gray-600">
             Use Closure (enables safe evaluation)
+          </label>
+        </div>
+        <div class="flex items-center justify-left mb-4">
+          <input
+            type="checkbox"
+            id="useIIFE"
+            checked={$$(useIIFE)}
+            onChange={(e: any) => useIIFE(e.target.checked)}
+            class="mr-2"
+          />
+          <label for="useIIFE" class="text-gray-600">
+            Use IIFE (auto-convert JS input to IIFE format)
           </label>
         </div>
 
@@ -901,6 +994,38 @@ return {
             <p class="font-medium mb-2">JavaScript:</p>
             <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample10}</code></pre>
             <p class="text-sm text-gray-600 mt-2">Note: This feature requires JSON5 support to be enabled</p>
+          </div>
+
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">11. IIFE (Immediately Invoked Function Expression)</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
+                <span class="mr-2">▼</span> Show JEON
+              </button>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample11}</code></pre>
+              </div>
+            </div>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample11}</code></pre>
+            <p class="text-sm text-gray-600 mt-2">Note: IIFEs are automatically unwrapped during conversion</p>
+          </div>
+
+          <div class="bg-gray-100 p-4 mb-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">12. IIFE with Parameters</h3>
+            <p class="font-medium mb-2">JEON:</p>
+            <div class="collapsible-code">
+              <button class="collapsible-btn">
+                <span class="mr-2">▼</span> Show JEON
+              </button>
+              <div class="collapsible-content hidden">
+                <pre class="bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json"><code class="language-json">{jeonExample12}</code></pre>
+              </div>
+            </div>
+            <p class="font-medium mb-2">JavaScript:</p>
+            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript"><code class="language-JavaScript">{tsExample12}</code></pre>
+            <p class="text-sm text-gray-600 mt-2">Note: IIFEs with parameters are automatically unwrapped during conversion</p>
           </div>
         </div>
       </div>

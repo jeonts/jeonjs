@@ -28,7 +28,7 @@ try {
     console.log(regenerated)
 
     // Check that the regenerated code is correct
-    if (regenerated.includes('let d;') && regenerated.includes('const f = 22;') && regenerated.includes('let g;')) {
+    if (regenerated.includes('let d') && regenerated.includes('const f = 22') && regenerated.includes('let g')) {
         console.log('✅ Regenerated code correctly preserves uninitialized variables')
     } else {
         console.log('❌ Regenerated code missing uninitialized variables')

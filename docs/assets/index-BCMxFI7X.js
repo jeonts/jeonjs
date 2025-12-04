@@ -1452,12 +1452,385 @@ const _with = () => {
     return owner.wrap(() => fn(), owner, observer, stack2);
   };
 };
+const isSSR = typeof window === "undefined" || typeof document === "undefined" || typeof customElements === "undefined";
 const DIRECTIVES = {};
 const SYMBOL_TEMPLATE_ACCESSOR = Symbol("Template.Accessor");
 const SYMBOLS_DIRECTIVES = {};
 const SYMBOL_CLONE = Symbol("CloneElement");
 const SYMBOL_JSX = Symbol("Jsx");
 const SYMBOL_DEFAULT = Symbol("Default");
+class SimpleNodeList {
+  constructor(nodes = []) {
+    this.nodes = nodes;
+  }
+  get length() {
+    return this.nodes.length;
+  }
+  item(index) {
+    return this.nodes[index] || null;
+  }
+  [Symbol.iterator]() {
+    return this.nodes[Symbol.iterator]();
+  }
+}
+class BaseNode {
+  constructor(nodeType) {
+    this._observers = [];
+    this.nodeType = nodeType;
+    this.attributes = {};
+    this.childNodes = [];
+    this.parentNode = null;
+    this._mutations = [];
+  }
+  appendChild(child) {
+    const previousSibling = this.childNodes.length > 0 ? this.childNodes[this.childNodes.length - 1] : null;
+    if (child) {
+      child.parentNode = this;
+    }
+    this.childNodes.push(child);
+    this._notifyMutation({
+      type: "childList",
+      target: this,
+      addedNodes: new SimpleNodeList([child]),
+      removedNodes: new SimpleNodeList([]),
+      previousSibling,
+      nextSibling: null,
+      attributeName: null,
+      attributeNamespace: null,
+      oldValue: null
+    });
+    return child;
+  }
+  // append(...nodes: any[]) {
+  //     nodes.forEach(node => {
+  //         // Handle string nodes by converting them to TextNode
+  //         if (typeof node === 'string') {
+  //             const textNode = new TextNode(node)
+  //             this.appendChild(textNode)
+  //         } else {
+  //             this.appendChild(node)
+  //         }
+  //     })
+  // }
+  insertBefore(newNode, referenceNode) {
+    if (referenceNode === null) {
+      return this.appendChild(newNode);
+    }
+    const index = this.childNodes.indexOf(referenceNode);
+    if (index === -1) {
+      throw new Error("Reference node not found");
+    }
+    const previousSibling = index > 0 ? this.childNodes[index - 1] : null;
+    const nextSibling = referenceNode;
+    if (newNode) {
+      newNode.parentNode = this;
+    }
+    this.childNodes.splice(index, 0, newNode);
+    this._notifyMutation({
+      type: "childList",
+      target: this,
+      addedNodes: new SimpleNodeList([newNode]),
+      removedNodes: new SimpleNodeList([]),
+      previousSibling,
+      nextSibling,
+      attributeName: null,
+      attributeNamespace: null,
+      oldValue: null
+    });
+    return newNode;
+  }
+  removeChild(child) {
+    const index = this.childNodes.indexOf(child);
+    if (index === -1) {
+      throw new Error("Child node not found");
+    }
+    const previousSibling = index > 0 ? this.childNodes[index - 1] : null;
+    const nextSibling = index < this.childNodes.length - 1 ? this.childNodes[index + 1] : null;
+    if (child) {
+      child.parentNode = null;
+    }
+    this.childNodes.splice(index, 1);
+    this._notifyMutation({
+      type: "childList",
+      target: this,
+      addedNodes: new SimpleNodeList([]),
+      removedNodes: new SimpleNodeList([child]),
+      previousSibling,
+      nextSibling,
+      attributeName: null,
+      attributeNamespace: null,
+      oldValue: null
+    });
+    return child;
+  }
+  setAttribute(name, value) {
+    const oldValue = this.attributes[name];
+    const newValue = String(value);
+    this.attributes[name] = newValue;
+    this._notifyMutation({
+      type: "attributes",
+      target: this,
+      addedNodes: new SimpleNodeList([]),
+      removedNodes: new SimpleNodeList([]),
+      previousSibling: null,
+      nextSibling: null,
+      attributeName: name,
+      attributeNamespace: null,
+      oldValue: oldValue !== void 0 ? oldValue : null
+    });
+  }
+  removeAttribute(name) {
+    const oldValue = this.attributes[name];
+    if (oldValue !== void 0) {
+      delete this.attributes[name];
+      this._notifyMutation({
+        type: "attributes",
+        target: this,
+        addedNodes: new SimpleNodeList([]),
+        removedNodes: new SimpleNodeList([]),
+        previousSibling: null,
+        nextSibling: null,
+        attributeName: name,
+        attributeNamespace: null,
+        oldValue
+      });
+    }
+  }
+  // Internal method to notify observers of mutations
+  _notifyMutation(mutation) {
+    this._mutations.push(mutation);
+    this._observers.forEach(({ observer, options: options2 }) => {
+      const filteredMutations = observer["_filterMutations"]([mutation], options2);
+      if (filteredMutations.length > 0) {
+        observer["callback"](filteredMutations, observer);
+      }
+    });
+  }
+  // Method for MutationObserver to register itself
+  _addObserver(observer, options2) {
+    this._observers.push({ observer, options: options2 });
+  }
+  // Method for MutationObserver to unregister itself
+  _removeObserver(observer) {
+    const index = this._observers.findIndex((item) => item.observer === observer);
+    if (index !== -1) {
+      this._observers.splice(index, 1);
+    }
+  }
+}
+let MutationObserver$1 = class MutationObserver2 {
+  constructor(callback) {
+    this.observedElements = /* @__PURE__ */ new Map();
+    this.pendingMutations = [];
+    this.callback = callback;
+  }
+  observe(target, options2) {
+    this.observedElements.set(target, options2 || {});
+    target._addObserver(this, options2 || {});
+  }
+  disconnect() {
+    this.observedElements.forEach((options2, target) => {
+      target._removeObserver(this);
+    });
+    this.observedElements.clear();
+    this.pendingMutations = [];
+  }
+  takeRecords() {
+    const records = [...this.pendingMutations];
+    this.pendingMutations = [];
+    return records;
+  }
+  // Helper method to filter mutations based on observer options
+  _filterMutations(mutations, options2) {
+    return mutations.filter((mutation) => {
+      if (mutation.type === "childList" && options2.childList) {
+        return true;
+      }
+      if (mutation.type === "attributes" && options2.attributes) {
+        if (options2.attributeFilter && mutation.attributeName) {
+          return options2.attributeFilter.includes(mutation.attributeName);
+        }
+        return true;
+      }
+      return false;
+    });
+  }
+  // Helper method to simulate mutations for testing
+  static simulateMutation(target, record) {
+    if (target._mutations) {
+      target._mutations.push(record);
+    }
+  }
+};
+const customElementsRegistry = /* @__PURE__ */ new Map();
+const customElements$1 = {
+  define: (tagName, component) => {
+    customElementsRegistry.set(tagName, component);
+  },
+  get: (tagName) => {
+    return customElementsRegistry.get(tagName);
+  },
+  whenDefined: async (tagName) => {
+    return Promise.resolve();
+  }
+};
+class ElementNode extends BaseNode {
+  constructor(tag) {
+    super(1);
+    this.tagName = tag.toUpperCase();
+    this.style = {};
+    this.className = "";
+  }
+  append(...nodes) {
+    nodes.forEach((node) => this.appendChild(node));
+  }
+  before(...nodes) {
+    if (this.parentNode) {
+      nodes.forEach((node) => this.parentNode.insertBefore(node, this));
+    }
+  }
+  set textContent(value) {
+    this.childNodes = [];
+  }
+  get innerHTML() {
+    return this.childNodes.map((child) => {
+      if (typeof child === "object" && child !== null) {
+        if ("outerHTML" in child) return child.outerHTML;
+        if ("textContent" in child) return child.textContent;
+      }
+      return String(child);
+    }).join("");
+  }
+  get outerHTML() {
+    const attrs = Object.entries(this.attributes).map(([name, value]) => `${name}="${value}"`).join(" ");
+    const attrStr = attrs ? ` ${attrs}` : "";
+    const children = this.childNodes.map((child) => {
+      if (typeof child === "object" && child !== null) {
+        if ("outerHTML" in child) return child.outerHTML;
+        if ("textContent" in child) return child.textContent;
+      }
+      return String(child);
+    }).join("");
+    return `<${this.tagName}${attrStr}>${children}</${this.tagName}>`;
+  }
+}
+class DocumentNode extends BaseNode {
+  constructor() {
+    super(9);
+    this.head = new ElementNode("head");
+    this.body = new ElementNode("body");
+    this.styleSheets = [];
+    this._eventListeners = /* @__PURE__ */ new Map();
+  }
+  // Add SSR creator methods
+  createComment(content = "") {
+    return new CommentNode(content);
+  }
+  createElement(tagName) {
+    return new ElementNode(tagName);
+  }
+  createElementNS(namespaceURI, qualifiedName) {
+    class SVGNode extends BaseNode {
+      constructor() {
+        super(1);
+        this.tagName = qualifiedName.toUpperCase();
+        this.isSVG = true;
+        this.style = {};
+      }
+      // Getter for outerHTML
+      get outerHTML() {
+        const attrs = Object.entries(this.attributes).map(([name, value]) => `${name}="${value}"`).join(" ");
+        const attrStr = attrs ? ` ${attrs}` : "";
+        const children = this.childNodes.map((child) => {
+          if (typeof child === "object" && child !== null) {
+            if ("outerHTML" in child) {
+              return child.outerHTML;
+            } else if ("textContent" in child) {
+              return child.textContent;
+            }
+          }
+          return String(child);
+        }).join("");
+        return `<${this.tagName}${attrStr}>${children}</${this.tagName}>`;
+      }
+    }
+    return new SVGNode();
+  }
+  createTextNode(text) {
+    return new TextNode(text);
+  }
+  createDocumentFragment() {
+    class DocumentFragmentNode extends BaseNode {
+      constructor() {
+        super(11);
+      }
+    }
+    return new DocumentFragmentNode();
+  }
+  addEventListener(type, listener, options2) {
+    if (!this._eventListeners.has(type)) this._eventListeners.set(type, []);
+    this._eventListeners.get(type).push({ listener, options: options2 });
+  }
+  removeEventListener(type, listener, options2) {
+    if (this._eventListeners.has(type)) {
+      const listeners = this._eventListeners.get(type);
+      const index = listeners.findIndex((item) => item.listener === listener);
+      if (index !== -1) listeners.splice(index, 1);
+    }
+  }
+  _getEventListeners(type) {
+    return this._eventListeners.get(type) || [];
+  }
+}
+const document$1 = new DocumentNode();
+const HTMLElement$1 = ElementNode;
+class TextNode extends BaseNode {
+  constructor(text) {
+    super(3);
+    this.textContent = String(text);
+  }
+}
+class CommentNode extends BaseNode {
+  constructor(content) {
+    super(8);
+    this.textContent = String(content);
+  }
+}
+if (isSSR) {
+  globalThis.customElements = customElements$1;
+  globalThis.document = document$1;
+  globalThis.MutationObserver = MutationObserver$1;
+  globalThis.HTMLElement = HTMLElement$1;
+  globalThis.Element = HTMLElement$1;
+  globalThis.Node = BaseNode;
+  globalThis.Text = TextNode;
+  globalThis.Comment = CommentNode;
+}
+function getCreators() {
+  if (typeof via !== "undefined") {
+    const document22 = via.document;
+    if (typeof document22 !== "undefined" && document22 !== null && typeof document22.createComment === "function" && typeof document22.createElement === "function" && typeof document22.createTextNode === "function" && typeof document22.createDocumentFragment === "function") {
+      return {
+        createComment: document22.createComment,
+        createHTMLNode: document22.createElement,
+        createSVGNode: (name) => document22.createElementNS("http://www.w3.org/2000/svg", name),
+        createText: document22.createTextNode,
+        createDocumentFragment: document22.createDocumentFragment
+      };
+    }
+  }
+  let document2 = globalThis.document;
+  if (!document2)
+    document2 = document$1;
+  return {
+    createComment: document2.createComment.bind(document2, ""),
+    createHTMLNode: document2.createElement.bind(document2),
+    createSVGNode: document2.createElementNS.bind(document2, "http://www.w3.org/2000/svg"),
+    createText: document2.createTextNode.bind(document2),
+    createDocumentFragment: document2.createDocumentFragment.bind(document2)
+  };
+}
+const { createComment, createHTMLNode, createSVGNode, createText, createDocumentFragment } = getCreators();
 const assign$1 = Object.assign;
 const castArray = (value) => {
   return isArray$2(value) ? value : [value];
@@ -1565,6 +1938,126 @@ const classesToggle = (element, classes, force) => {
     element.classList.toggle(classes, !!force);
   }
 };
+const dummyNode = createComment("");
+const beforeDummyWrapper = [dummyNode];
+const afterDummyWrapper = [dummyNode];
+const diff = (parent, before, after, nextSibling) => {
+  if (before === after) return;
+  if (before instanceof Node) {
+    if (after instanceof Node) {
+      if (before.parentNode === parent) {
+        parent.replaceChild(after, before);
+        return;
+      }
+    }
+    beforeDummyWrapper[0] = before;
+    before = beforeDummyWrapper;
+  }
+  if (after instanceof Node) {
+    afterDummyWrapper[0] = after;
+    after = afterDummyWrapper;
+  }
+  const bLength = after.length;
+  let aEnd = before.length;
+  let bEnd = bLength;
+  let aStart = 0;
+  let bStart = 0;
+  let map = null;
+  let removable;
+  while (aStart < aEnd || bStart < bEnd) {
+    if (aEnd === aStart) {
+      const node = bEnd < bLength ? bStart ? after[bStart - 1].nextSibling : after[bEnd - bStart] : nextSibling;
+      if (bStart < bEnd) {
+        if (node) {
+          node.before.apply(node, after.slice(bStart, bEnd));
+        } else {
+          if (typeof parent.append === "function") {
+            parent.append(...after.slice(bStart, bEnd));
+          } else if (typeof parent.appendChild === "function") {
+            const nodes = after.slice(bStart, bEnd);
+            for (const node2 of nodes) {
+              parent.appendChild(node2);
+            }
+          } else {
+            console.log("no append detected");
+          }
+        }
+        bStart = bEnd;
+      }
+    } else if (bEnd === bStart) {
+      while (aStart < aEnd) {
+        if (!map || !map.has(before[aStart])) {
+          removable = before[aStart];
+          if (removable.parentNode === parent) {
+            parent.removeChild(removable);
+          }
+        }
+        aStart++;
+      }
+    } else if (before[aStart] === after[bStart]) {
+      aStart++;
+      bStart++;
+    } else if (before[aEnd - 1] === after[bEnd - 1]) {
+      aEnd--;
+      bEnd--;
+    } else if (before[aStart] === after[bEnd - 1] && after[bStart] === before[aEnd - 1]) {
+      const node = before[--aEnd].nextSibling;
+      parent.insertBefore(
+        after[bStart++],
+        before[aStart++].nextSibling
+      );
+      parent.insertBefore(after[--bEnd], node);
+      before[aEnd] = after[bEnd];
+    } else {
+      if (!map) {
+        map = /* @__PURE__ */ new Map();
+        let i = bStart;
+        while (i < bEnd)
+          map.set(after[i], i++);
+      }
+      if (map.has(before[aStart])) {
+        const index = map.get(before[aStart]);
+        if (bStart < index && index < bEnd) {
+          let i = aStart;
+          let sequence = 1;
+          while (++i < aEnd && i < bEnd && map.get(before[i]) === index + sequence)
+            sequence++;
+          if (sequence > index - bStart) {
+            const node = before[aStart];
+            if (bStart < index) {
+              if (node) {
+                node.before.apply(node, after.slice(bStart, index));
+              } else {
+                if (typeof parent.append === "function") {
+                  parent.append(...after.slice(bStart, index));
+                } else if (typeof parent.appendChild === "function") {
+                  const nodes = after.slice(bStart, index);
+                  for (const node2 of nodes) {
+                    parent.appendChild(node2);
+                  }
+                } else ;
+              }
+              bStart = index;
+            }
+          } else {
+            parent.replaceChild(
+              after[bStart++],
+              before[aStart++]
+            );
+          }
+        } else
+          aStart++;
+      } else {
+        removable = before[aStart++];
+        if (removable.parentNode === parent) {
+          parent.removeChild(removable);
+        }
+      }
+    }
+  }
+  beforeDummyWrapper[0] = dummyNode;
+  afterDummyWrapper[0] = dummyNode;
+};
 const NOOP_CHILDREN = [];
 const FragmentUtils = {
   make: () => {
@@ -1641,136 +2134,6 @@ const FragmentUtils = {
     thiz.fragmented = fragment.fragmented;
     thiz.length = fragment.length;
   }
-};
-const wrapElement = (element) => {
-  element[SYMBOL_UNTRACKED_UNWRAPPED] = true;
-  return element;
-};
-const wrapCloneElement = (target, component, props) => {
-  target[SYMBOL_CLONE] = { Component: component, props };
-  return target;
-};
-const { createComment, createHTMLNode, createSVGNode, createText, createDocumentFragment } = (() => {
-  if (typeof via !== "undefined") {
-    const document2 = via.document;
-    const createComment2 = document2.createComment;
-    const createHTMLNode2 = document2.createElement;
-    const createSVGNode2 = (name) => document2.createElementNS("http://www.w3.org/2000/svg", name);
-    const createText2 = document2.createTextNode;
-    const createDocumentFragment2 = document2.createDocumentFragment;
-    return { createComment: createComment2, createHTMLNode: createHTMLNode2, createSVGNode: createSVGNode2, createText: createText2, createDocumentFragment: createDocumentFragment2 };
-  } else {
-    const createComment2 = document.createComment.bind(document, "");
-    const createHTMLNode2 = document.createElement.bind(document);
-    const createSVGNode2 = document.createElementNS.bind(document, "http://www.w3.org/2000/svg");
-    const createText2 = document.createTextNode.bind(document);
-    const createDocumentFragment2 = document.createDocumentFragment.bind(document);
-    return { createComment: createComment2, createHTMLNode: createHTMLNode2, createSVGNode: createSVGNode2, createText: createText2, createDocumentFragment: createDocumentFragment2 };
-  }
-})();
-const dummyNode = createComment("");
-const beforeDummyWrapper = [dummyNode];
-const afterDummyWrapper = [dummyNode];
-const diff = (parent, before, after, nextSibling) => {
-  if (before === after) return;
-  if (before instanceof Node) {
-    if (after instanceof Node) {
-      if (before.parentNode === parent) {
-        parent.replaceChild(after, before);
-        return;
-      }
-    }
-    beforeDummyWrapper[0] = before;
-    before = beforeDummyWrapper;
-  }
-  if (after instanceof Node) {
-    afterDummyWrapper[0] = after;
-    after = afterDummyWrapper;
-  }
-  const bLength = after.length;
-  let aEnd = before.length;
-  let bEnd = bLength;
-  let aStart = 0;
-  let bStart = 0;
-  let map = null;
-  let removable;
-  while (aStart < aEnd || bStart < bEnd) {
-    if (aEnd === aStart) {
-      const node = bEnd < bLength ? bStart ? after[bStart - 1].nextSibling : after[bEnd - bStart] : nextSibling;
-      if (bStart < bEnd) {
-        if (node) {
-          node.before.apply(node, after.slice(bStart, bEnd));
-        } else {
-          parent.append.apply(parent, after.slice(bStart, bEnd));
-        }
-        bStart = bEnd;
-      }
-    } else if (bEnd === bStart) {
-      while (aStart < aEnd) {
-        if (!map || !map.has(before[aStart])) {
-          removable = before[aStart];
-          if (removable.parentNode === parent) {
-            parent.removeChild(removable);
-          }
-        }
-        aStart++;
-      }
-    } else if (before[aStart] === after[bStart]) {
-      aStart++;
-      bStart++;
-    } else if (before[aEnd - 1] === after[bEnd - 1]) {
-      aEnd--;
-      bEnd--;
-    } else if (before[aStart] === after[bEnd - 1] && after[bStart] === before[aEnd - 1]) {
-      const node = before[--aEnd].nextSibling;
-      parent.insertBefore(
-        after[bStart++],
-        before[aStart++].nextSibling
-      );
-      parent.insertBefore(after[--bEnd], node);
-      before[aEnd] = after[bEnd];
-    } else {
-      if (!map) {
-        map = /* @__PURE__ */ new Map();
-        let i = bStart;
-        while (i < bEnd)
-          map.set(after[i], i++);
-      }
-      if (map.has(before[aStart])) {
-        const index = map.get(before[aStart]);
-        if (bStart < index && index < bEnd) {
-          let i = aStart;
-          let sequence = 1;
-          while (++i < aEnd && i < bEnd && map.get(before[i]) === index + sequence)
-            sequence++;
-          if (sequence > index - bStart) {
-            const node = before[aStart];
-            if (bStart < index) {
-              if (node) {
-                node.before.apply(node, after.slice(bStart, index));
-              } else {
-                parent.append.apply(parent, after.slice(bStart, index));
-              }
-              bStart = index;
-            }
-          } else {
-            parent.replaceChild(
-              after[bStart++],
-              before[aStart++]
-            );
-          }
-        } else
-          aStart++;
-      } else {
-        removable = before[aStart++];
-        if (removable.parentNode === parent) {
-          parent.removeChild(removable);
-        }
-      }
-    }
-  }
-  beforeDummyWrapper[0] = dummyNode;
-  afterDummyWrapper[0] = dummyNode;
 };
 const resolveChild = (value, setter, _dynamic = false, stack2) => {
   if (isArray$2(value)) {
@@ -1937,14 +2300,21 @@ const setAttributeStatic = /* @__PURE__ */ (() => {
   };
 })();
 const setAttribute = (element, key2, value, stack2) => {
-  if (isFunction(value) && isFunctionReactive(value))
-    useRenderEffect(() => {
-      var _a2;
-      const unwrappedValue = value();
-      const { toHtml } = ((_a2 = value[SYMBOL_OBSERVABLE_WRITABLE]) == null ? void 0 : _a2.options) ?? {};
-      setAttributeStatic(element, key2, toHtml ? toHtml(unwrappedValue) : unwrappedValue);
-    }, stack2);
-  else
+  var _a2, _b2;
+  if (isFunction(value) && isFunctionReactive(value)) {
+    if (isObservable(value) && ((_b2 = (_a2 = value[SYMBOL_OBSERVABLE_WRITABLE]) == null ? void 0 : _a2.options) == null ? void 0 : _b2.toHtml)) {
+      useRenderEffect(() => {
+        const unwrappedValue = value();
+        const options2 = value[SYMBOL_OBSERVABLE_WRITABLE].options;
+        const htmlValue = options2.toHtml(unwrappedValue);
+        setAttributeStatic(element, key2, htmlValue);
+      }, stack2);
+    } else {
+      useRenderEffect(() => {
+        setAttributeStatic(element, key2, value());
+      }, stack2);
+    }
+  } else
     setAttributeStatic(element, key2, get(value));
 };
 const setChildReplacementText = (child, childPrev) => {
@@ -1979,7 +2349,9 @@ const setChildStatic = (parent, fragment, fragmentOnly, child, dynamic, childCom
     } else if (type === "object" && child !== null && typeof child.nodeType === "number") {
       const node = child;
       if (!fragmentOnly) {
-        parent.insertBefore(node, null);
+        if (typeof parent.insertBefore === "function") {
+          parent.insertBefore(node, null);
+        }
       }
       FragmentUtils.replaceWithNode(fragment, node);
       return;
@@ -2037,7 +2409,9 @@ const setChildStatic = (parent, fragment, fragmentOnly, child, dynamic, childCom
         if (next instanceof Array) {
           prevSibling.before.apply(prevSibling, next);
         } else {
-          parent.insertBefore(next, prevSibling);
+          if (typeof parent.insertBefore === "function") {
+            parent.insertBefore(next, prevSibling);
+          }
         }
       } else {
         if (next instanceof Array) {
@@ -2431,6 +2805,14 @@ const setProps = (element, object, stack2) => {
     setProp(element, key2, object[key2], stack2);
   }
 };
+const wrapElement = (element) => {
+  element[SYMBOL_UNTRACKED_UNWRAPPED] = true;
+  return element;
+};
+const wrapCloneElement = (target, component, props) => {
+  target[SYMBOL_CLONE] = { Component: component, props };
+  return target;
+};
 const wrapJsx = (props) => {
   if (props[SYMBOL_JSX]) return props;
   props[SYMBOL_JSX] = true;
@@ -2452,7 +2834,7 @@ function getProps(component, props) {
   if (!props) props = {};
   return wrapJsx(props);
 }
-function jsx$1(component, props, ...children) {
+function jsx(component, props, ...children) {
   if (typeof children === "string")
     return wrapCloneElement(createElement(component, props ?? {}, children), component, props);
   props = getProps(component, props);
@@ -2460,7 +2842,7 @@ function jsx$1(component, props, ...children) {
     Object.assign(props, { children });
   return wrapCloneElement(createElement(component, props, props == null ? void 0 : props.key), component, props);
 }
-const jsxs = jsx$1;
+const jsxs = jsx;
 const createElement = (component, _props, ..._children) => {
   const children = _children.length > 1 ? _children : _children.length > 0 ? _children[0] : void 0;
   const hasChildren = !isVoidChild(children);
@@ -2575,7 +2957,7 @@ class Memo extends Observer {
   }
 }
 const memo = (fn, options2) => {
-  const stack2 = (options2 == null ? void 0 : options2.stack) ?? callStack();
+  const stack2 = callStack();
   if (isObservableFrozen(fn)) {
     return fn;
   } else if (isUntracked(fn)) {
@@ -3102,6 +3484,8 @@ function htm(s) {
     return p(), h;
   })(s)), r), arguments, [])).length > 1 ? r : r[0];
 }
+var _a, _b;
+!!((_b = (_a = globalThis.CDATASection) == null ? void 0 : _a.toString) == null ? void 0 : _b.call(_a).match(/^\s*function\s+CDATASection\s*\(\s*\)\s*\{\s*\[native code\]\s*\}\s*$/));
 const render = (child, parent) => {
   if (!parent || !(parent instanceof HTMLElement || parent instanceof ShadowRoot)) throw new Error("Invalid parent node");
   parent.textContent = "";
@@ -3113,8 +3497,6 @@ const render = (child, parent) => {
     };
   });
 };
-var _a, _b;
-!!((_b = (_a = globalThis.CDATASection) == null ? void 0 : _a.toString) == null ? void 0 : _b.call(_a).match(/^\s*function\s+CDATASection\s*\(\s*\)\s*\{\s*\[native code\]\s*\}\s*$/));
 const registry = {};
 const h2 = (type, props, ...children) => createElement(registry[type] || type, props, ...children);
 const register = (components) => void assign$1(registry, components);
@@ -3122,6 +3504,12 @@ assign$1(htm.bind(h2), { register });
 function visitString(jeon, jsonImpl) {
   if (jeon === ";") {
     return ";";
+  }
+  if (jeon.endsWith("n") && jeon.length > 1) {
+    const bigintPart = jeon.slice(0, -1);
+    if (/^-?\d+$/.test(bigintPart)) {
+      return jeon;
+    }
   }
   if (jeon.startsWith("@")) {
     const cleanName = jeon.substring(1);
@@ -3146,12 +3534,17 @@ function visitArray(jeon, visit, jsonImpl, isTopLevel = false, closure = false) 
   if (jeon.length === 0) {
     return "[]";
   }
-  const firstElement = jeon[0];
-  if (typeof firstElement === "object" && firstElement !== null) {
+  const hasStatementObjects = jeon.some((item) => typeof item === "object" && item !== null && Object.keys(item).some(
+    (key2) => key2.startsWith("function") || key2.startsWith("async function") || key2.startsWith("function*") || key2 === "@" || key2 === "@@" || key2 === "if" || key2 === "while" || key2 === "for" || key2 === "switch" || key2 === "try" || key2 === "return" || key2 === "break" || key2 === "continue" || key2 === "throw" || key2 === "debugger" || key2 === "class" || key2 === "import" || key2 === "export" || key2 === "()" || key2.endsWith("=>")
+  ));
+  if (hasStatementObjects) {
     const statementResults = jeon.map((expr) => {
       const result = visit(expr);
       if (result === ";") {
         return ";";
+      }
+      if (result.startsWith("\n//") && result.endsWith("\n")) {
+        return result;
       }
       if (result.trim().startsWith("function") || result.trim().startsWith("const ") || result.trim().startsWith("let ") || result.trim().startsWith("var ")) {
         return result;
@@ -3173,7 +3566,35 @@ function visitArray(jeon, visit, jsonImpl, isTopLevel = false, closure = false) 
       return statements;
     }
   }
-  return `[${jeon.map((item) => visit(item)).join(", ")}]`;
+  const elementStrings = jeon.map((item) => {
+    if (item === "@undefined") {
+      return null;
+    } else if (item === "@@undefined") {
+      return "undefined";
+    } else {
+      return visit(item);
+    }
+  });
+  const formattedElements = [];
+  for (let i = 0; i < elementStrings.length; i++) {
+    const element = elementStrings[i];
+    if (element !== null) {
+      if (formattedElements.length > 0 && !(element && element.match(/^\n\/\//) && element.endsWith("\n"))) {
+        formattedElements.push(" ");
+      }
+      formattedElements.push(element);
+    }
+    if (i < elementStrings.length - 1) {
+      if (element && element.match(/^\n\/\//) && element.endsWith("\n")) {
+        formattedElements.push(",\n");
+      } else if (element === null) {
+        formattedElements.push(",");
+      } else {
+        formattedElements.push(",");
+      }
+    }
+  }
+  return `[${formattedElements.join("")}]`;
 }
 function visitFunctionDeclaration$1(keys, jeon, visit, jsonImpl, closure = false) {
   for (const key2 of keys) {
@@ -3196,7 +3617,11 @@ function visitFunctionDeclaration$1(keys, jeon, visit, jsonImpl, closure = false
       const bodyStr = Array.isArray(body) ? body.map((stmt) => visit(stmt)).join("\n  ") : visit(body);
       if (closure) {
         const contextObj = params.map((p) => `${p}: ${p}`).join(", ");
-        const formattedBody = jsonImpl ? jsonImpl.stringify(body, null, 2) : JSON.stringify(body, null, 2);
+        let jeonBody = body;
+        if (Array.isArray(body) && body.length === 1 && typeof body[0] === "object" && body[0] !== null) {
+          jeonBody = body[0];
+        }
+        const formattedBody = jsonImpl ? jsonImpl.stringify(jeonBody, null, 2) : JSON.stringify(jeonBody, null, 2);
         return `${key2.split("(")[0]}(${params.join(", ")}) { return evalJeon(${formattedBody}, {${contextObj}}); }`;
       }
       return `${key2.split("(")[0]}(${params.join(", ")}) {
@@ -3234,6 +3659,8 @@ function visitVariableDeclaration$1(op, operands, visit, jsonImpl, closure = fal
       initializedVars.push({ name, value });
     } else if (value === void 0 || value === "@undefined" || value === null) {
       uninitializedVars.push(name);
+    } else if (value === "@@undefined") {
+      initializedVars.push({ name, value: "@undefined" });
     } else {
       initializedVars.push({ name, value });
     }
@@ -3393,7 +3820,7 @@ function visitClass(op, operands, keys, visit, jsonImpl, closure = false) {
           if (closure) {
             if (params.length > 0) {
               const contextParams = params.map((p) => `"${p}": ${p}`).join(", ");
-              return `  ${methodName}(${params.join(", ")}) { const ctx = Object.assign({${contextParams}}, {this: this}); return evalJeon(${JSON.stringify(value)}, ctx); }`;
+              return `  ${methodName}(${params.join(", ")}) { return evalJeon(${JSON.stringify(value)}, {${contextParams}, this: this}); }`;
             } else {
               return `  ${methodName}(${params.join(", ")}) { return evalJeon(${JSON.stringify(value)}, {this: this}); }`;
             }
@@ -3481,7 +3908,7 @@ ${memberEntries.join("\n")}
           if (closure) {
             if (params.length > 0) {
               const contextParams = params.map((p) => `"${p}": ${p}`).join(", ");
-              return `  ${methodName}(${params.join(", ")}) { const ctx = Object.assign({${contextParams}}, {this: this}); return evalJeon(${JSON.stringify(value)}, ctx); }`;
+              return `  ${methodName}(${params.join(", ")}) { return evalJeon(${JSON.stringify(value)}, {${contextParams}, this: this}); }`;
             } else {
               return `  ${methodName}(${params.join(", ")}) { return evalJeon(${JSON.stringify(value)}, {this: this}); }`;
             }
@@ -3611,17 +4038,58 @@ function visitOperator(op, operands, visit, jsonImpl, closure = false) {
   switch (op) {
     case "[":
       if (Array.isArray(operands)) {
-        const elements = operands.map((operand) => visit(operand)).join(", ");
-        return `[${elements}]`;
+        const elementStrings = operands.map((item) => {
+          if (item === "@undefined") {
+            return null;
+          } else if (item === "@@undefined") {
+            return "undefined";
+          } else {
+            return visit(item);
+          }
+        });
+        const formattedElements = [];
+        for (let i = 0; i < elementStrings.length; i++) {
+          const element = elementStrings[i];
+          if (element !== null) {
+            if (formattedElements.length > 0 && !(element && element.match(/^\n\/\//) && element.endsWith("\n"))) {
+              formattedElements.push(" ");
+            }
+            formattedElements.push(element);
+          }
+          if (i < elementStrings.length - 1) {
+            if (element && element.match(/^\n\/\//) && element.endsWith("\n")) {
+              formattedElements.push(",\n");
+            } else if (element === null) {
+              formattedElements.push(",");
+            } else {
+              formattedElements.push(",");
+            }
+          }
+        }
+        return `[${formattedElements.join("")}]`;
       }
       return "[]";
     case "(":
       return `(${visit(operands)})`;
     case "//":
       if (typeof operands === "string") {
-        return `// ${operands}`;
+        return `
+//${operands}
+`;
       }
-      return "// (comment)";
+      return "\n//(comment)\n";
+    case "/*":
+      if (Array.isArray(operands)) {
+        const commentText = operands.join("\n");
+        return `
+/*${commentText}*/
+`;
+      } else if (typeof operands === "string") {
+        return `
+/*${operands}*/
+`;
+      }
+      return "\n/* (comment) */\n";
     case "/ /":
       if (typeof operands === "object" && operands !== null) {
         const pattern = operands.pattern || "";
@@ -3731,24 +4199,85 @@ function visitFunctionCall(keys, jeon, visit, jsonImpl, closure = false) {
   return "";
 }
 function visitObject(keys, jeon, visit, jsonImpl, closure = false) {
+  const formatKey = (key2) => {
+    if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key2) && !["break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do", "else", "export", "extends", "finally", "for", "function", "if", "import", "in", "instanceof", "new", "return", "super", "switch", "this", "throw", "try", "typeof", "var", "void", "while", "with", "yield", "let", "static", "await", "enum"].includes(key2)) {
+      return key2;
+    } else if (/^(0|[1-9]\d*)$/.test(key2)) {
+      return key2;
+    } else {
+      return (jsonImpl || JSON).stringify(key2);
+    }
+  };
   const hasSpread = keys.some((key2) => key2 === "..." || key2.startsWith("..."));
   if (hasSpread) {
     const entries2 = [];
-    for (const [key2, value] of Object.entries(jeon)) {
+    const formattedEntries2 = [];
+    let needsLineBreaks2 = false;
+    for (const key2 of keys) {
+      let formattedValue;
       if (key2 === "...") {
-        entries2.push(`...${visit(value)}`);
+        formattedValue = `...${visit(jeon[key2])}`;
       } else if (key2.startsWith("...")) {
-        entries2.push(`...${visit(value)}`);
+        formattedValue = `...${visit(jeon[key2])}`;
       } else {
-        entries2.push(`${(jsonImpl || JSON).stringify(key2)}: ${visit(value)}`);
+        formattedValue = `${formatKey(key2)}:${visit(jeon[key2])}`;
+      }
+      formattedEntries2.push(formattedValue);
+      if (formattedValue.includes(" ") || formattedValue.includes("\n")) {
+        needsLineBreaks2 = true;
       }
     }
-    return `{ ${entries2.join(", ")} }`;
+    for (let i = 0; i < formattedEntries2.length; i++) {
+      const entry = formattedEntries2[i];
+      if (needsLineBreaks2 && i < formattedEntries2.length - 1) {
+        entries2.push(entry + ",\n");
+      } else {
+        entries2.push(entry);
+      }
+    }
+    if (needsLineBreaks2) {
+      return `{${entries2.join("")}}`;
+    } else {
+      return `{${entries2.join(",")}}`;
+    }
   }
-  const entries = Object.entries(jeon).map(([key2, value]) => {
-    return `${(jsonImpl || JSON).stringify(key2)}: ${visit(value)}`;
-  });
-  return `{ ${entries.join(", ")} }`;
+  const entries = [];
+  const formattedEntries = [];
+  let needsLineBreaks = false;
+  for (let i = 0; i < keys.length; i++) {
+    const key2 = keys[i];
+    const value = jeon[key2];
+    if (key2.startsWith("__COMMENT_") && value && typeof value === "object" && value.__comment__) {
+      const comment = value;
+      if (comment.type === "Line") {
+        formattedEntries.push(` //${comment.value}`);
+      } else if (comment.type === "Block") {
+        formattedEntries.push(`
+/*${comment.value}*/
+`);
+      }
+      continue;
+    }
+    const formattedValue = visit(value);
+    const entry = `${formatKey(key2)}:${formattedValue}`;
+    formattedEntries.push(entry);
+    if (formattedValue.includes(" ") || formattedValue.includes("\n")) {
+      needsLineBreaks = true;
+    }
+  }
+  for (let i = 0; i < formattedEntries.length; i++) {
+    const entry = formattedEntries[i];
+    if (needsLineBreaks && i < formattedEntries.length - 1) {
+      entries.push(entry + ",\n");
+    } else {
+      entries.push(entry);
+    }
+  }
+  if (needsLineBreaks) {
+    return `{${entries.join("")}}`;
+  } else {
+    return `{${entries.join(",")}}`;
+  }
 }
 function visitPropertyAccess(op, operands, visit, jsonImpl, closure = false) {
   if (op === ".") {
@@ -15799,7 +16328,7 @@ function requireAcornJsx() {
   return acornJsx.exports;
 }
 var acornJsxExports = requireAcornJsx();
-const jsx = /* @__PURE__ */ getDefaultExportFromCjs(acornJsxExports);
+const jsx2 = /* @__PURE__ */ getDefaultExportFromCjs(acornJsxExports);
 function visitBinaryExpression(node, options2) {
   return {
     [node.operator]: [
@@ -15815,9 +16344,66 @@ function visitUnaryExpression(node, options2) {
 }
 function visitProgram(node, options2) {
   if (node.body.length === 1) {
-    return ast2jeon(node.body[0], options2);
+    const result = ast2jeon(node.body[0], options2);
+    if (node.comments && node.comments.length > 0) {
+      const nonEmptyComments = node.comments.filter((comment) => comment.value.trim() !== "");
+      if (nonEmptyComments.length > 0) {
+        if (typeof result === "object" && result !== null && !Array.isArray(result)) {
+          return {
+            "//": nonEmptyComments.map((comment) => comment.value),
+            ...result
+          };
+        } else {
+          return {
+            "//": nonEmptyComments.map((comment) => comment.value),
+            "result": result
+          };
+        }
+      }
+    }
+    return result;
+  } else {
+    const statementsWithComments = [];
+    let currentCommentIndex = 0;
+    const nonEmptyComments = node.comments ? node.comments.filter((comment) => comment.value.trim() !== "") : [];
+    for (let i = 0; i < node.body.length; i++) {
+      const stmt = node.body[i];
+      const stmtStart = stmt.start;
+      const stmtComments = [];
+      while (currentCommentIndex < nonEmptyComments.length && nonEmptyComments[currentCommentIndex].start < stmtStart) {
+        stmtComments.push(nonEmptyComments[currentCommentIndex].value);
+        currentCommentIndex++;
+      }
+      const stmtResult = ast2jeon(stmt, options2);
+      if (stmtComments.length > 0) {
+        if (typeof stmtResult === "object" && stmtResult !== null && !Array.isArray(stmtResult)) {
+          statementsWithComments.push({
+            "//": stmtComments,
+            ...stmtResult
+          });
+        } else {
+          statementsWithComments.push({
+            "//": stmtComments,
+            "statement": stmtResult
+          });
+        }
+      } else {
+        statementsWithComments.push(stmtResult);
+      }
+    }
+    const remainingComments = [];
+    while (currentCommentIndex < nonEmptyComments.length) {
+      remainingComments.push(nonEmptyComments[currentCommentIndex].value);
+      currentCommentIndex++;
+    }
+    if (remainingComments.length > 0) {
+      return {
+        "program": statementsWithComments,
+        "//": remainingComments
+      };
+    }
+    return statementsWithComments;
   }
-  return node.body.map((stmt) => ast2jeon(stmt, options2));
 }
 function visitIdentifier(node, options2) {
   return `@${node.name}`;
@@ -15830,6 +16416,9 @@ function visitLiteral(node, options2) {
         flags: node.regex.flags
       }
     };
+  }
+  if (typeof node.value === "bigint" || node.bigint) {
+    return node.raw || node.bigint + "n";
   }
   return node.value;
 }
@@ -15894,20 +16483,45 @@ function visitMemberExpression(node, options2) {
 }
 function visitArrayExpression(node, options2) {
   return {
-    "[": node.elements.filter((element) => element !== null).map((element) => ast2jeon(element, options2))
+    "[": node.elements.map((element) => {
+      if (element === null) {
+        return "@undefined";
+      }
+      if (element.type === "Identifier" && element.name === "undefined") {
+        return "@@undefined";
+      }
+      return ast2jeon(element, options2);
+    })
   };
 }
 function visitObjectExpression(node, options2) {
   const obj = {};
   let spreadIndex = 0;
   for (const prop of node.properties) {
-    if (prop.type === "Property") {
+    if (prop.type === "CommentNode") {
+      const commentNode = prop;
+      const commentKey = `__COMMENT_${node.properties.indexOf(prop)}__`;
+      obj[commentKey] = {
+        __comment__: true,
+        type: commentNode.commentType,
+        value: commentNode.value
+      };
+    } else if (prop.type === "Property") {
       const key2 = prop.key.type === "Identifier" ? prop.key.name : prop.key.value;
       obj[key2] = ast2jeon(prop.value, options2);
     } else if (prop.type === "SpreadElement") {
       const spreadKey = spreadIndex === 0 ? "..." : `...${spreadIndex}`;
       obj[spreadKey] = ast2jeon(prop.argument, options2);
       spreadIndex++;
+    }
+  }
+  if (node.comments && node.comments.length > 0) {
+    const nonEmptyComments = node.comments.filter((comment) => comment.value.trim() !== "");
+    if (nonEmptyComments.length > 0) {
+      return {
+        "//": nonEmptyComments.map((comment) => comment.value),
+        ...obj
+      };
     }
   }
   return obj;
@@ -16018,7 +16632,16 @@ function visitVariableDeclaration(node, options2) {
   const declarations = {};
   for (const decl of node.declarations) {
     if (decl.id.type === "Identifier") {
-      declarations[decl.id.name] = decl.init ? ast2jeon(decl.init, options2) : "@undefined";
+      if (decl.init) {
+        const initValue = ast2jeon(decl.init, options2);
+        if (initValue === "@undefined") {
+          declarations[decl.id.name] = "@@undefined";
+        } else {
+          declarations[decl.id.name] = initValue;
+        }
+      } else {
+        declarations[decl.id.name] = "@undefined";
+      }
     }
   }
   return {
@@ -16372,6 +16995,20 @@ function visitParenthesizedExpression(node, options2) {
 function visitEmptyStatement(node, options2) {
   return ";";
 }
+function visitCommentNode(node) {
+  if (node.commentType === "Line") {
+    return {
+      "//": node.value
+    };
+  } else if (node.commentType === "Block") {
+    return {
+      "/*": node.value.split("\n")
+    };
+  }
+  return {
+    "//": node.value
+  };
+}
 const visitorRegistry = {
   "BinaryExpression": (node, options2) => visitBinaryExpression(node, options2),
   "UnaryExpression": (node, options2) => visitUnaryExpression(node, options2),
@@ -16414,7 +17051,8 @@ const visitorRegistry = {
   "BreakStatement": (node, options2) => visitBreakStatement(node),
   "TryStatement": (node, options2) => visitTryStatement(node, options2),
   "ParenthesizedExpression": (node, options2) => visitParenthesizedExpression(node, options2),
-  "EmptyStatement": (node, options2) => visitEmptyStatement()
+  "EmptyStatement": (node, options2) => visitEmptyStatement(),
+  "CommentNode": (node) => visitCommentNode(node)
 };
 function ast2jeon(node, options2) {
   if (!node) return null;
@@ -16424,7 +17062,7 @@ function ast2jeon(node, options2) {
   }
   switch (node.type) {
     case "ArrayExpression":
-      return node.elements.filter((element) => element !== null).map((element) => ast2jeon(element, options2));
+      return visitArrayExpression(node, options2);
     case "ExpressionStatement":
       return ast2jeon(node.expression, options2);
     case "LogicalExpression":
@@ -16681,25 +17319,109 @@ function ast2jeon(node, options2) {
         "throw": ast2jeon(node.argument, options2)
       };
     case "Program":
+      let programResult;
       if (node.body.length === 1) {
-        return ast2jeon(node.body[0], options2);
+        programResult = ast2jeon(node.body[0], options2);
+      } else {
+        programResult = node.body.map((stmt) => ast2jeon(stmt, options2));
       }
-      return node.body.map((stmt) => ast2jeon(stmt, options2));
+      if (node.comments && node.comments.length > 0) {
+        const nonEmptyComments = node.comments.filter((comment) => comment.value.trim() !== "");
+        if (nonEmptyComments.length > 0) {
+          if (typeof programResult === "object" && programResult !== null && !Array.isArray(programResult)) {
+            return {
+              ...programResult,
+              "//": nonEmptyComments.map((comment) => comment.value)
+            };
+          } else if (Array.isArray(programResult)) {
+            return {
+              "program": programResult,
+              "//": nonEmptyComments.map((comment) => comment.value)
+            };
+          } else {
+            return {
+              "result": programResult,
+              "//": nonEmptyComments.map((comment) => comment.value)
+            };
+          }
+        }
+      }
+      return programResult;
     default:
       return `[${node.type}]`;
   }
 }
+function insertCommentsIntoArray(array, commentNodes) {
+  commentNodes.sort((a, b) => a.start - b.start);
+  for (const comment of commentNodes) {
+    let insertIndex = array.length;
+    for (let i = 0; i < array.length; i++) {
+      const element = array[i];
+      if (element && typeof element.start === "number" && element.start > comment.end) {
+        insertIndex = i;
+        break;
+      }
+    }
+    array.splice(insertIndex, 0, comment);
+  }
+}
+function insertCommentNodes(node, commentNodes) {
+  if (Array.isArray(node.properties)) {
+    insertCommentsIntoArray(node.properties, commentNodes);
+  } else if (Array.isArray(node.body)) {
+    insertCommentsIntoArray(node.body, commentNodes);
+  } else ;
+}
+function positionCommentsInAST(node, comments, consumedComments = /* @__PURE__ */ new Set()) {
+  if (!node || typeof node !== "object") {
+    return node;
+  }
+  for (const key2 in node) {
+    if (node.hasOwnProperty(key2) && key2 !== "comments") {
+      const value = node[key2];
+      if (Array.isArray(value)) {
+        node[key2] = value.map((item) => positionCommentsInAST(item, comments, consumedComments));
+      } else if (value && typeof value === "object" && !(value instanceof RegExp)) {
+        node[key2] = positionCommentsInAST(value, comments, consumedComments);
+      }
+    }
+  }
+  if (typeof node.start === "number" && typeof node.end === "number") {
+    const commentsWithinNode = [];
+    comments.forEach((comment, index) => {
+      if (!consumedComments.has(index) && comment.start >= node.start && comment.end <= node.end) {
+        commentsWithinNode.push(comment);
+        consumedComments.add(index);
+      }
+    });
+    if (commentsWithinNode.length > 0) {
+      const commentNodes = commentsWithinNode.map((comment) => ({
+        type: "CommentNode",
+        commentType: comment.type,
+        value: comment.value.trim(),
+        start: comment.start,
+        end: comment.end
+      }));
+      insertCommentNodes(node, commentNodes);
+    }
+  }
+  return node;
+}
 function js2jeon(code, options2) {
   try {
-    const Parser$1 = Parser.extend(jsx());
+    const comments = [];
+    const Parser$1 = Parser.extend(jsx2());
     const ast = Parser$1.parse(code, {
       ecmaVersion: "latest",
       sourceType: "module",
       allowReturnOutsideFunction: true,
-      preserveParens: true
+      preserveParens: true,
       // Preserve parentheses in the AST
+      onComment: comments
+      // Collect comments
     });
-    return ast2jeon(ast, options2);
+    const astWithPositionedComments = positionCommentsInAST(ast, comments, /* @__PURE__ */ new Set());
+    return ast2jeon(astWithPositionedComments, options2);
   } catch (error) {
     console.error("Error parsing JavaScript/JavaScript code:", error);
     throw error;
@@ -16751,6 +17473,17 @@ function evalJeon(jeon, context2 = {}) {
       const result = evalJeon(item, context2);
       if (item && typeof item === "object" && !Array.isArray(item) && item["return"] !== void 0) {
         return result;
+      }
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        const keys = Object.keys(item);
+        const functionDeclarationKey = keys.find((key2) => key2.startsWith("function"));
+        if (functionDeclarationKey) {
+          const nameMatch = functionDeclarationKey.match(/function\s+(\w+)/);
+          if (nameMatch) {
+            const functionName = nameMatch[1];
+            context2[functionName] = result;
+          }
+        }
       }
       if (i === jeon.length - 1) {
         return result;
@@ -19931,21 +20664,188 @@ Prism.languages.json = {
   }
 };
 Prism.languages.webmanifest = Prism.languages.json;
-Object.assign(globalThis.JSON5Options ?? {}, { bigint: true });
+function convertToIIFE(code) {
+  try {
+    const Parser$1 = Parser.extend(jsx2());
+    let ast;
+    let wasWrapped = false;
+    let processedCode = code;
+    try {
+      ast = Parser$1.parse(code, {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        allowReturnOutsideFunction: true,
+        preserveParens: true
+      });
+      if (ast.body.length === 1) {
+        const firstStatement = ast.body[0];
+        if (firstStatement.type === "BlockStatement") {
+          try {
+            processedCode = `(${code})`;
+            const wrappedAst = Parser$1.parse(processedCode, {
+              ecmaVersion: "latest",
+              sourceType: "module",
+              allowReturnOutsideFunction: true,
+              preserveParens: true
+            });
+            ast = wrappedAst;
+            wasWrapped = true;
+          } catch (innerError) {
+          }
+        } else if (firstStatement.type === "ExpressionStatement") {
+        }
+      }
+    } catch (error) {
+      try {
+        processedCode = `(${code})`;
+        ast = Parser$1.parse(processedCode, {
+          ecmaVersion: "latest",
+          sourceType: "module",
+          allowReturnOutsideFunction: true,
+          preserveParens: true
+        });
+        wasWrapped = true;
+      } catch (innerError) {
+        throw error;
+      }
+    }
+    if (!wasWrapped && ast.body.length === 1 && ast.body[0].type === "ExpressionStatement" && ast.body[0].expression.type === "CallExpression" && ast.body[0].expression.arguments.length === 0) {
+      let callee = ast.body[0].expression.callee;
+      if (callee.type === "ParenthesizedExpression") {
+        callee = callee.expression;
+      }
+      if (callee.type === "FunctionExpression" || callee.type === "ArrowFunctionExpression") {
+        return code;
+      }
+    }
+    if (ast.body.length === 0) {
+      return `(() => {})()`;
+    }
+    const lastStatement = ast.body[ast.body.length - 1];
+    if (wasWrapped) {
+      return `(() => {
+  return ${processedCode};
+})()`;
+    }
+    let returnExpression = "";
+    let needsReturnAdded = true;
+    switch (lastStatement.type) {
+      case "ExpressionStatement":
+        const start = lastStatement.expression.start;
+        const end = lastStatement.expression.end;
+        const expressionText = code.substring(start, end);
+        returnExpression = `return ${expressionText};`;
+        break;
+      case "VariableDeclaration":
+        if (lastStatement.declarations.length > 0) {
+          const lastDecl = lastStatement.declarations[lastStatement.declarations.length - 1];
+          if (lastDecl.init) {
+            if (lastDecl.id && lastDecl.id.name) {
+              returnExpression = `return ${lastDecl.id.name};`;
+            } else {
+              returnExpression = "";
+            }
+          } else {
+            returnExpression = "return void 0;";
+          }
+        } else {
+          returnExpression = "";
+        }
+        break;
+      case "FunctionDeclaration":
+        if (lastStatement.id && lastStatement.id.name) {
+          returnExpression = `return ${lastStatement.id.name};`;
+        } else {
+          const funcStart = lastStatement.start;
+          const funcEnd = lastStatement.end;
+          const funcText = code.substring(funcStart, funcEnd);
+          returnExpression = `return (${funcText});`;
+        }
+        break;
+      case "ClassDeclaration":
+        if (lastStatement.id && lastStatement.id.name) {
+          returnExpression = `return ${lastStatement.id.name};`;
+        } else {
+          const classStart = lastStatement.start;
+          const classEnd = lastStatement.end;
+          const classText = code.substring(classStart, classEnd);
+          returnExpression = `return (${classText});`;
+        }
+        break;
+      case "ReturnStatement":
+        returnExpression = "";
+        needsReturnAdded = false;
+        break;
+      default:
+        returnExpression = "";
+    }
+    let lines = code.split("\n");
+    if (returnExpression && needsReturnAdded) {
+      if (lastStatement.type === "ExpressionStatement") {
+        const lastStmtStartLine = code.substring(0, lastStatement.start).split("\n").length - 1;
+        const lastStmtEndLine = code.substring(0, lastStatement.end).split("\n").length - 1;
+        if (lastStmtStartLine === lastStmtEndLine && lastStmtStartLine >= 0 && lastStmtStartLine < lines.length) {
+          lines[lastStmtStartLine] = returnExpression.trim();
+        } else {
+          lines.push(returnExpression);
+        }
+      } else {
+        lines.push(returnExpression);
+      }
+    }
+    const indentedLines = lines.map((line2) => line2 ? `  ${line2}` : "");
+    return `(() => {
+${indentedLines.join("\n")}
+})()`;
+  } catch (error) {
+    console.error("Error parsing code:", error);
+    const indentedCode = code.split("\n").map((line2) => line2 ? `  ${line2}` : "").join("\n");
+    return `(() => {
+${indentedCode}
+})()`;
+  }
+}
+globalThis.JSON5Options = Object.assign(globalThis.JSON5Options ?? {}, { bigint: true });
 const App = () => {
   const jeonInput = observable(`{
   "function(a, b)": [
     { "return": { "+": ["@a", "@b"] } }
   ]
 }`);
-  const jsInput = observable("function sum(a, b) {\n  return a + b;\n}");
+  const jsInput = observable(`
+// Some of the built-in JavaScript types that get encoded
+
+const item = { foo: 1 };
+
+return {
+  date: new /* Date (not supported) */ Date("2025-01-01T00:00:00.000Z"),
+  regexp2: /* hello (not supported) */ /hello world/,
+  regexp: /hello world/gi,
+  error: new Error("Something went wrong", { cause: 404 }),
+  url: new URL("https://example.com/path?query=value"),
+  urlSearchParams: new URLSearchParams("query=value&another=value"),
+  bigint: 1234567890123456789n,
+  symbol: Symbol.for("test"), // end of line
+  undefined: undefined,
+  // None of those are handled by normal JSON.stringify
+  specialNumbers: [Infinity, /* negative (not supported) */ -Infinity, // end of inline
+   -0, NaN],
+  someData: new Uint8Array([1, 2, 3, 4, 5]),
+  set: new Set([1, 2, 3]),
+  map: new Map([[1, 1], // end of line
+  [2, 2]]),
+  sameRefs: [item, item, item],
+  sparsedArray: [0,,, undefined, 0],
+}
+    `);
   const jsOutput = observable("");
   const jeonOutput = observable("");
-  const useJSON5 = observable(false);
+  const useJSON5 = observable(true);
   const useClosure = observable(false);
+  const useIIFE = observable(false);
   const evalResult = observable("");
   const evalContext = observable("{}");
-  const json = memo(() => get(useJSON5) ? lib : JSON, () => get(useJSON5));
+  const json = memo(() => get(useJSON5) ? lib : JSON);
   const jeonInputRef = observable(null);
   const jsInputRef = observable(null);
   const tsOutputCodeRef = observable(null);
@@ -19992,16 +20892,21 @@ const App = () => {
     };
     updateHighlightedJeonOutput();
   });
+  const encodeHtmlEntities = (str) => {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  };
   effect(() => {
     const tsOutputElement = get(tsOutputCodeRef);
     if (tsOutputElement) {
-      tsOutputElement.innerHTML = get(highlightedJsOutput);
+      const escapedOutput = encodeHtmlEntities(get(highlightedJsOutput));
+      tsOutputElement.innerHTML = escapedOutput;
     }
   });
   effect(() => {
     const jeonOutputElement = get(jeonOutputCodeRef);
     if (jeonOutputElement) {
-      jeonOutputElement.innerHTML = get(highlightedJeonOutput);
+      const escapedOutput = encodeHtmlEntities(get(highlightedJeonOutput));
+      jeonOutputElement.innerHTML = escapedOutput;
     }
   });
   const handleJeonPaste = (e) => {
@@ -20054,17 +20959,11 @@ const App = () => {
     try {
       const refElement = get(jeonInputRef);
       const currentValue = refElement ? refElement.textContent || refElement.innerText : "";
-      console.log("JSON5:", lib);
-      console.log("typeof JSON5:", typeof lib);
-      console.log("JSON5.stringify:", lib.stringify);
-      console.log("JSON5.parse:", lib.parse);
-      console.log("typeof JSON5.stringify:", typeof lib.stringify);
-      console.log("typeof JSON5.parse:", typeof lib.parse);
-      console.log("JSON created:", json);
-      console.log("typeof JSON.parse:", typeof json.parse);
-      console.log("typeof JSON5.parse:", typeof lib.parse);
       const jeon = get(json).parse(currentValue);
-      const code = jeon2js(jeon, { json: get(json), closure: useClosure() });
+      let code = jeon2js(jeon, { json: get(json), closure: useClosure() });
+      if (get(useIIFE)) {
+        code = convertToIIFE(code);
+      }
       console.log("Converted JavaScript code:", code);
       jsOutput(code);
     } catch (error) {
@@ -20076,17 +20975,35 @@ const App = () => {
     try {
       const refElement = get(jsInputRef);
       const currentValue = refElement ? refElement.textContent || refElement.innerText : "";
-      console.log("JSON5:", lib);
-      console.log("typeof JSON5:", typeof lib);
-      console.log("JSON5.stringify:", lib.stringify);
-      console.log("JSON5.parse:", lib.parse);
-      console.log("typeof JSON5.stringify:", typeof lib.stringify);
-      console.log("typeof JSON5.parse:", typeof lib.parse);
-      console.log("JSON created:", json);
-      console.log("typeof JSON.stringify:", typeof json.stringify);
-      console.log("typeof JSON.parse:", typeof json.parse);
       let codeToParse = currentValue;
       let originalInput = codeToParse;
+      try {
+        const Parser$1 = Parser.extend(jsx2());
+        const ast = Parser$1.parse(codeToParse, {
+          ecmaVersion: "latest",
+          sourceType: "module",
+          allowReturnOutsideFunction: true,
+          preserveParens: true
+        });
+        if (ast.body.length === 1 && ast.body[0].type === "ExpressionStatement" && ast.body[0].expression.type === "CallExpression" && ast.body[0].expression.arguments.length === 0) {
+          let callee = ast.body[0].expression.callee;
+          if (callee.type === "ParenthesizedExpression") {
+            callee = callee.expression;
+          }
+          if (callee.type === "FunctionExpression" || callee.type === "ArrowFunctionExpression") {
+            const functionStart = callee.start;
+            const functionEnd = callee.end;
+            const functionCode = codeToParse.substring(functionStart, functionEnd);
+            codeToParse = functionCode;
+            jsInput(codeToParse);
+            if (refElement) {
+              refElement.textContent = codeToParse;
+            }
+          }
+        }
+      } catch (e) {
+        console.log("Failed to parse as IIFE, using original code");
+      }
       let jeon;
       try {
         jeon = js2jeon(codeToParse, { json: get(json) });
@@ -20114,7 +21031,7 @@ const App = () => {
           }
         }
       }
-      const formatted = get(json).stringify(jeon, null, 2);
+      const formatted = get(json).stringify(jeon, void 0, 2);
       console.log("Converted JEON:", formatted);
       jeonOutput(formatted);
       console.log("JEON output set to:", formatted);
@@ -20199,25 +21116,23 @@ const App = () => {
   const tsExample7 = `let a = [1, 2, ...[3, 4], 5];`;
   const jeonExample8 = `{
   "class Person": {
-    "constructor(name)": {
-      "function(name)": [
-        {
-          "=": [
-            {
-              ".": [
-                "@this",
-                "name"
-              ]
-            },
-            "@name"
-          ]
-        }
-      ]
-    },
-    "greet()": {
-      "function()": [
-        {
-          "return": {
+    "constructor(name)": [
+      {
+        "=": [
+          {
+            ".": [
+              "@this",
+              "name"
+            ]
+          },
+          "@name"
+        ]
+      }
+    ],
+    "greet()": [
+      {
+        "return": {
+          "(": {
             "+": [
               "Hello, ",
               {
@@ -20229,8 +21144,8 @@ const App = () => {
             ]
           }
         }
-      ]
-    }
+      }
+    ]
   }
 }`;
   const tsExample8 = `class Person {
@@ -20245,33 +21160,29 @@ const App = () => {
   "@@": {
     "Animal": {
       "class": {
-        "constructor(species)": {
-          "function(species)": [
-            {
-              "=": [
-                {
-                  ".": [
-                    "@this",
-                    "species"
-                  ]
-                },
-                "@species"
-              ]
-            }
-          ]
-        },
-        "getType()": {
-          "function()": [
-            {
-              "return": {
+        "constructor(species)": [
+          {
+            "=": [
+              {
                 ".": [
                   "@this",
                   "species"
                 ]
-              }
+              },
+              "@species"
+            ]
+          }
+        ],
+        "getType()": [
+          {
+            "return": {
+              ".": [
+                "@this",
+                "species"
+              ]
             }
-          ]
-        }
+          }
+        ]
       }
     }
   }
@@ -20298,6 +21209,24 @@ const App = () => {
   }
 }`;
   const tsExample10 = `let a = {1:2, 2:3, ...{3:3, 4:4}, 5:5};`;
+  const jeonExample11 = `{
+  "function()": [
+    {
+      "return": "Hello, World!"
+    }
+  ]
+}`;
+  const tsExample11 = `(function() { return "Hello, World!"; })();`;
+  const jeonExample12 = `{
+  "function(name)": [
+    {
+      "return": {
+        "+": ["Hello, ", "@name"]
+      }
+    }
+  ]
+}`;
+  const tsExample12 = `(function(name) { return "Hello, " + name; })("JEON");`;
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).catch((err) => {
       console.error("Failed to copy text: ", err);
@@ -20314,10 +21243,10 @@ const App = () => {
       console.error("Failed to read clipboard contents: ", err);
     }
   };
-  const paste = () => /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", width: "16px", height: "16px", viewBox: "0 0 24 24", fill: "none", children: /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", "clip-rule": "evenodd", d: "M12 0C11.2347 0 10.6293 0.125708 10.1567 0.359214C9.9845 0.44429 9.82065 0.544674 9.68861 0.62717L9.59036 0.688808C9.49144 0.751003 9.4082 0.803334 9.32081 0.853848C9.09464 0.984584 9.00895 0.998492 9.00053 0.999859C8.99983 0.999973 9.00019 0.999859 9.00053 0.999859C7.89596 0.999859 7 1.89543 7 3H6C4.34315 3 3 4.34315 3 6V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V6C21 4.34315 19.6569 3 18 3H17C17 1.89543 16.1046 1 15 1C15.0003 1 15.0007 1.00011 15 1C14.9916 0.998633 14.9054 0.984584 14.6792 0.853848C14.5918 0.80333 14.5086 0.751004 14.4096 0.688804L14.3114 0.62717C14.1793 0.544674 14.0155 0.44429 13.8433 0.359214C13.3707 0.125708 12.7653 0 12 0ZM16.7324 5C16.3866 5.5978 15.7403 6 15 6H9C8.25972 6 7.61337 5.5978 7.26756 5H6C5.44772 5 5 5.44772 5 6V20C5 20.5523 5.44772 21 6 21H18C18.5523 21 19 20.5523 19 20V6C19 5.44772 18.5523 5 18 5H16.7324ZM11.0426 2.15229C11.1626 2.09301 11.4425 2 12 2C12.5575 2 12.8374 2.09301 12.9574 2.15229C13.0328 2.18953 13.1236 2.24334 13.2516 2.32333L13.3261 2.37008C13.43 2.43542 13.5553 2.51428 13.6783 2.58539C13.9712 2.75469 14.4433 3 15 3V4H9V3C9.55666 3 10.0288 2.75469 10.3217 2.58539C10.4447 2.51428 10.57 2.43543 10.6739 2.37008L10.7484 2.32333C10.8764 2.24334 10.9672 2.18953 11.0426 2.15229Z", fill: "#0F0F0F" }) });
+  const paste = () => /* @__PURE__ */ jsx("svg", { xmlns: "http://www.w3.org/2000/svg", width: "16px", height: "16px", viewBox: "0 0 24 24", fill: "none", children: /* @__PURE__ */ jsx("path", { "fill-rule": "evenodd", "clip-rule": "evenodd", d: "M12 0C11.2347 0 10.6293 0.125708 10.1567 0.359214C9.9845 0.44429 9.82065 0.544674 9.68861 0.62717L9.59036 0.688808C9.49144 0.751003 9.4082 0.803334 9.32081 0.853848C9.09464 0.984584 9.00895 0.998492 9.00053 0.999859C8.99983 0.999973 9.00019 0.999859 9.00053 0.999859C7.89596 0.999859 7 1.89543 7 3H6C4.34315 3 3 4.34315 3 6V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V6C21 4.34315 19.6569 3 18 3H17C17 1.89543 16.1046 1 15 1C15.0003 1 15.0007 1.00011 15 1C14.9916 0.998633 14.9054 0.984584 14.6792 0.853848C14.5918 0.80333 14.5086 0.751004 14.4096 0.688804L14.3114 0.62717C14.1793 0.544674 14.0155 0.44429 13.8433 0.359214C13.3707 0.125708 12.7653 0 12 0ZM16.7324 5C16.3866 5.5978 15.7403 6 15 6H9C8.25972 6 7.61337 5.5978 7.26756 5H6C5.44772 5 5 5.44772 5 6V20C5 20.5523 5.44772 21 6 21H18C18.5523 21 19 20.5523 19 20V6C19 5.44772 18.5523 5 18 5H16.7324ZM11.0426 2.15229C11.1626 2.09301 11.4425 2 12 2C12.5575 2 12.8374 2.09301 12.9574 2.15229C13.0328 2.18953 13.1236 2.24334 13.2516 2.32333L13.3261 2.37008C13.43 2.43542 13.5553 2.51428 13.6783 2.58539C13.9712 2.75469 14.4433 3 15 3V4H9V3C9.55666 3 10.0288 2.75469 10.3217 2.58539C10.4447 2.51428 10.57 2.43543 10.6739 2.37008L10.7484 2.32333C10.8764 2.24334 10.9672 2.18953 11.0426 2.15229Z", fill: "#0F0F0F" }) });
   const copy = () => /* @__PURE__ */ jsxs("svg", { xmlns: "http://www.w3.org/2000/svg", width: "16px", height: "16px", viewBox: "0 0 24 24", fill: "none", children: [
-    /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", "clip-rule": "evenodd", d: "M21 8C21 6.34315 19.6569 5 18 5H10C8.34315 5 7 6.34315 7 8V20C7 21.6569 8.34315 23 10 23H18C19.6569 23 21 21.6569 21 20V8ZM19 8C19 7.44772 18.5523 7 18 7H10C9.44772 7 9 7.44772 9 8V20C9 20.5523 9.44772 21 10 21H18C18.5523 21 19 20.5523 19 20V8Z", fill: "#0F0F0F" }),
-    /* @__PURE__ */ jsx$1("path", { d: "M6 3H16C16.5523 3 17 2.55228 17 2C17 1.44772 16.5523 1 16 1H6C4.34315 1 3 2.34315 3 4V18C3 18.5523 3.44772 19 4 19C4.55228 19 5 18.5523 5 18V4C5 3.44772 5.44772 3 6 3Z", fill: "#0F0F0F" })
+    /* @__PURE__ */ jsx("path", { "fill-rule": "evenodd", "clip-rule": "evenodd", d: "M21 8C21 6.34315 19.6569 5 18 5H10C8.34315 5 7 6.34315 7 8V20C7 21.6569 8.34315 23 10 23H18C19.6569 23 21 21.6569 21 20V8ZM19 8C19 7.44772 18.5523 7 18 7H10C9.44772 7 9 7.44772 9 8V20C9 20.5523 9.44772 21 10 21H18C18.5523 21 19 20.5523 19 20V8Z", fill: "#0F0F0F" }),
+    /* @__PURE__ */ jsx("path", { d: "M6 3H16C16.5523 3 17 2.55228 17 2C17 1.44772 16.5523 1 16 1H6C4.34315 1 3 2.34315 3 4V18C3 18.5523 3.44772 19 4 19C4.55228 19 5 18.5523 5 18V4C5 3.44772 5.44772 3 6 3Z", fill: "#0F0F0F" })
   ] });
   const evaluateJsOutput = () => {
     try {
@@ -20352,11 +21281,11 @@ const App = () => {
       evalResult(`Error: ${error.message}`);
     }
   };
-  return /* @__PURE__ */ jsx$1("div", { class: "max-w-6xl mx-auto p-5 bg-gray-800 text-white", children: /* @__PURE__ */ jsxs("div", { class: "bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800", children: [
-    /* @__PURE__ */ jsx$1("h1", { class: "text-3xl font-bold text-center text-gray-800 mb-4", children: "JEON Converter Demo" }),
-    /* @__PURE__ */ jsx$1("p", { class: "text-center text-gray-600 mb-8", children: "A bidirectional converter between JEON (JSON-based Executable Object Notation) and JavaScript/JavaScript." }),
+  return /* @__PURE__ */ jsx("div", { class: "max-w-6xl mx-auto p-5 bg-gray-800 text-white", children: /* @__PURE__ */ jsxs("div", { class: "bg-white rounded-lg shadow-lg p-6 my-6 text-gray-800", children: [
+    /* @__PURE__ */ jsx("h1", { class: "text-3xl font-bold text-center text-gray-800 mb-4", children: "JEON Converter Demo" }),
+    /* @__PURE__ */ jsx("p", { class: "text-center text-gray-600 mb-8", children: "A bidirectional converter between JEON (JSON-based Executable Object Notation) and JavaScript/JavaScript." }),
     /* @__PURE__ */ jsxs("div", { class: "flex items-center justify-left mb-4", children: [
-      /* @__PURE__ */ jsx$1(
+      /* @__PURE__ */ jsx(
         "input",
         {
           type: "checkbox",
@@ -20366,10 +21295,10 @@ const App = () => {
           class: "mr-2"
         }
       ),
-      /* @__PURE__ */ jsx$1("label", { for: "useJSON5", class: "text-gray-600", children: "Use JSON5 (allows comments, trailing commas, etc.)" })
+      /* @__PURE__ */ jsx("label", { for: "useJSON5", class: "text-gray-600", children: "Use JSON5 (allows comments, trailing commas, etc.)" })
     ] }),
     /* @__PURE__ */ jsxs("div", { class: "flex items-center justify-left mb-4", children: [
-      /* @__PURE__ */ jsx$1(
+      /* @__PURE__ */ jsx(
         "input",
         {
           type: "checkbox",
@@ -20379,14 +21308,27 @@ const App = () => {
           class: "mr-2"
         }
       ),
-      /* @__PURE__ */ jsx$1("label", { for: "useClosure", class: "text-gray-600", children: "Use Closure (enables safe evaluation)" })
+      /* @__PURE__ */ jsx("label", { for: "useClosure", class: "text-gray-600", children: "Use Closure (enables safe evaluation)" })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { class: "flex items-center justify-left mb-4", children: [
+      /* @__PURE__ */ jsx(
+        "input",
+        {
+          type: "checkbox",
+          id: "useIIFE",
+          checked: get(useIIFE),
+          onChange: (e) => useIIFE(e.target.checked),
+          class: "mr-2"
+        }
+      ),
+      /* @__PURE__ */ jsx("label", { for: "useIIFE", class: "text-gray-600", children: "Use IIFE (auto-convert JS input to IIFE format)" })
     ] }),
     /* @__PURE__ */ jsxs("div", { class: "flex flex-col lg:flex-row justify-center mb-4 gap-4", children: [
       /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2 relative", children: [
         /* @__PURE__ */ jsxs("div", { class: "flex justify-between items-center mb-2", children: [
-          /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold", children: "JEON to JavaScript" }),
+          /* @__PURE__ */ jsx("h2", { class: "text-xl font-bold", children: "JEON to JavaScript" }),
           /* @__PURE__ */ jsxs("div", { class: "flex gap-2", children: [
-            /* @__PURE__ */ jsx$1(
+            /* @__PURE__ */ jsx(
               "button",
               {
                 onClick: () => {
@@ -20399,7 +21341,7 @@ const App = () => {
                 children: copy()
               }
             ),
-            /* @__PURE__ */ jsx$1(
+            /* @__PURE__ */ jsx(
               "button",
               {
                 onClick: () => {
@@ -20412,7 +21354,7 @@ const App = () => {
             )
           ] })
         ] }),
-        /* @__PURE__ */ jsx$1(
+        /* @__PURE__ */ jsx(
           "pre",
           {
             ref: jeonInputRef,
@@ -20422,7 +21364,7 @@ const App = () => {
             children: jeonInput
           }
         ),
-        /* @__PURE__ */ jsx$1(
+        /* @__PURE__ */ jsx(
           "button",
           {
             onClick: convertJeonToJs,
@@ -20433,9 +21375,9 @@ const App = () => {
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2 relative", children: [
         /* @__PURE__ */ jsxs("div", { class: "flex justify-between items-center mb-2", children: [
-          /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold", children: "JavaScript to JEON" }),
+          /* @__PURE__ */ jsx("h2", { class: "text-xl font-bold", children: "JavaScript to JEON" }),
           /* @__PURE__ */ jsxs("div", { class: "flex gap-2", children: [
-            /* @__PURE__ */ jsx$1(
+            /* @__PURE__ */ jsx(
               "button",
               {
                 onClick: () => {
@@ -20448,7 +21390,7 @@ const App = () => {
                 children: copy()
               }
             ),
-            /* @__PURE__ */ jsx$1(
+            /* @__PURE__ */ jsx(
               "button",
               {
                 onClick: () => {
@@ -20461,7 +21403,7 @@ const App = () => {
             )
           ] })
         ] }),
-        /* @__PURE__ */ jsx$1(
+        /* @__PURE__ */ jsx(
           "pre",
           {
             ref: jsInputRef,
@@ -20471,7 +21413,7 @@ const App = () => {
             children: jsInput
           }
         ),
-        /* @__PURE__ */ jsx$1(
+        /* @__PURE__ */ jsx(
           "button",
           {
             onClick: convertJsToJeon,
@@ -20484,8 +21426,8 @@ const App = () => {
     /* @__PURE__ */ jsxs("div", { class: "flex flex-col lg:flex-row justify-center mb-4 gap-4", children: [
       /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2 relative", children: [
         /* @__PURE__ */ jsxs("div", { class: "flex justify-between items-center mb-2", children: [
-          /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold", children: "JavaScript Output" }),
-          /* @__PURE__ */ jsx$1(
+          /* @__PURE__ */ jsx("h2", { class: "text-xl font-bold", children: "JavaScript Output" }),
+          /* @__PURE__ */ jsx(
             "button",
             {
               onClick: () => copyToClipboard(get(jsOutput)),
@@ -20495,32 +21437,32 @@ const App = () => {
             }
           )
         ] }),
-        /* @__PURE__ */ jsx$1(
+        /* @__PURE__ */ jsx(
           "pre",
           {
             id: "ts-output",
             class: "w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto",
-            children: /* @__PURE__ */ jsx$1("code", { ref: tsOutputCodeRef, id: "ts-output-code" })
+            children: /* @__PURE__ */ jsx("code", { ref: tsOutputCodeRef, id: "ts-output-code" })
           }
         ),
-        /* @__PURE__ */ jsx$1(If, { when: () => get(useClosure), children: /* @__PURE__ */ jsxs("div", { class: "mt-4 p-4 bg-green-50 rounded-lg border border-green-200", children: [
+        /* @__PURE__ */ jsx(If, { when: () => get(useClosure), children: /* @__PURE__ */ jsxs("div", { class: "mt-4 p-4 bg-green-50 rounded-lg border border-green-200", children: [
           /* @__PURE__ */ jsxs(
             "button",
             {
               onClick: evaluateJsOutput,
               class: "w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 ease-in-out shadow-md hover:shadow-lg flex items-center justify-center",
               children: [
-                /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-5 w-5 mr-2", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", d: "M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z", "clip-rule": "evenodd" }) }),
+                /* @__PURE__ */ jsx("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-5 w-5 mr-2", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx("path", { "fill-rule": "evenodd", d: "M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z", "clip-rule": "evenodd" }) }),
                 "Evaluate with evalJeon"
               ]
             }
           ),
           /* @__PURE__ */ jsxs("div", { class: "mt-4", children: [
             /* @__PURE__ */ jsxs("label", { class: "block text-sm font-semibold text-green-800 mb-2 flex items-center", children: [
-              /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4 mr-1", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { d: "M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" }) }),
+              /* @__PURE__ */ jsx("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4 mr-1", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx("path", { d: "M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" }) }),
               "Evaluation Context (JSON/JSON5):"
             ] }),
-            /* @__PURE__ */ jsx$1(
+            /* @__PURE__ */ jsx(
               "textarea",
               {
                 value: evalContext,
@@ -20529,14 +21471,14 @@ const App = () => {
                 placeholder: '{"variableName": "value", "anotherVar": 42}'
               }
             ),
-            /* @__PURE__ */ jsx$1("p", { class: "mt-1 text-xs text-green-600", children: "Enter JSON context for variable evaluation" })
+            /* @__PURE__ */ jsx("p", { class: "mt-1 text-xs text-green-600", children: "Enter JSON context for variable evaluation" })
           ] }),
           /* @__PURE__ */ jsxs("div", { class: "mt-4", children: [
             /* @__PURE__ */ jsxs("label", { class: "block text-sm font-semibold text-green-800 mb-2 flex items-center", children: [
-              /* @__PURE__ */ jsx$1("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4 mr-1", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx$1("path", { "fill-rule": "evenodd", d: "M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z", "clip-rule": "evenodd" }) }),
+              /* @__PURE__ */ jsx("svg", { xmlns: "http://www.w3.org/2000/svg", class: "h-4 w-4 mr-1", viewBox: "0 0 20 20", fill: "currentColor", children: /* @__PURE__ */ jsx("path", { "fill-rule": "evenodd", d: "M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z", "clip-rule": "evenodd" }) }),
               "Evaluation Result:"
             ] }),
-            /* @__PURE__ */ jsx$1(
+            /* @__PURE__ */ jsx(
               "pre",
               {
                 class: "w-full h-32 font-mono text-sm p-3 border border-green-300 rounded-md bg-green-100 text-green-900 overflow-auto",
@@ -20548,8 +21490,8 @@ const App = () => {
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "w-full lg:w-1/2 relative", children: [
         /* @__PURE__ */ jsxs("div", { class: "flex justify-between items-center mb-2", children: [
-          /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold", children: "JEON Output" }),
-          /* @__PURE__ */ jsx$1(
+          /* @__PURE__ */ jsx("h2", { class: "text-xl font-bold", children: "JEON Output" }),
+          /* @__PURE__ */ jsx(
             "button",
             {
               onClick: () => copyToClipboard(get(jeonOutput)),
@@ -20559,142 +21501,170 @@ const App = () => {
             }
           )
         ] }),
-        /* @__PURE__ */ jsx$1(
+        /* @__PURE__ */ jsx(
           "pre",
           {
             id: "jeon-output",
             class: "w-full h-64 font-mono text-sm p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 overflow-auto",
-            children: /* @__PURE__ */ jsx$1("code", { ref: jeonOutputCodeRef, id: "jeon-output-code" })
+            children: /* @__PURE__ */ jsx("code", { ref: jeonOutputCodeRef, id: "jeon-output-code" })
           }
         )
       ] })
     ] }),
     /* @__PURE__ */ jsxs("div", { class: "mb-4", children: [
-      /* @__PURE__ */ jsx$1("h2", { class: "text-xl font-bold mb-4", children: "Example Conversions" }),
+      /* @__PURE__ */ jsx("h2", { class: "text-xl font-bold mb-4", children: "Example Conversions" }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "1. Function Declaration" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample1 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample1 }) })
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "1. Function Declaration" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample1 }) }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample1 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "2. Variable Declaration" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample2 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample2 }) })
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "2. Variable Declaration" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample2 }) }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample2 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "3. Arrow Function" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample3 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample3 }) })
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "3. Arrow Function" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample3 }) }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample3 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "4. Generator Function" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "4. Generator Function" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
-            /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample4 }) }) })
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample4 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample4 }) })
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample4 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "5. Async/Await" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "5. Async/Await" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
-            /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample5 }) }) })
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample5 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample5 }) })
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample5 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "6. JSX Elements" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "6. JSX Elements" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
-            /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample6 }) }) })
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample6 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample6 }) })
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample6 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "7. Array Spread Operator" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "7. Array Spread Operator" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
-            /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample7 }) }) })
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample7 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample7 }) })
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample7 }) })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "8. Class Declaration" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "8. Class Declaration" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
-            /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample8 }) }) })
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample8 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
-            /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
             " Show JavaScript"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample8 }) }) })
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample8 }) }) })
         ] })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "9. Assigned Class" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "9. Assigned Class" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
-            /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample9 }) }) })
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample9 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
-            /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
             " Show JavaScript"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample9 }) }) })
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample9 }) }) })
         ] })
       ] }),
       /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
-        /* @__PURE__ */ jsx$1("h3", { class: "text-lg font-bold mb-2", children: "10. Object Spread Operator (JSON5)" }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "10. Object Spread Operator (JSON5)" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
         /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
           /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
-            /* @__PURE__ */ jsx$1("span", { class: "mr-2", children: "▼" }),
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
             " Show JEON"
           ] }),
-          /* @__PURE__ */ jsx$1("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx$1("code", { class: "language-json", children: jeonExample10 }) }) })
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample10 }) }) })
         ] }),
-        /* @__PURE__ */ jsx$1("p", { class: "font-medium mb-2", children: "JavaScript:" }),
-        /* @__PURE__ */ jsx$1("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx$1("code", { class: "language-JavaScript", children: tsExample10 }) }),
-        /* @__PURE__ */ jsx$1("p", { class: "text-sm text-gray-600 mt-2", children: "Note: This feature requires JSON5 support to be enabled" })
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample10 }) }),
+        /* @__PURE__ */ jsx("p", { class: "text-sm text-gray-600 mt-2", children: "Note: This feature requires JSON5 support to be enabled" })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "11. IIFE (Immediately Invoked Function Expression)" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
+            " Show JEON"
+          ] }),
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample11 }) }) })
+        ] }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample11 }) }),
+        /* @__PURE__ */ jsx("p", { class: "text-sm text-gray-600 mt-2", children: "Note: IIFEs are automatically unwrapped during conversion" })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { class: "bg-gray-100 p-4 mb-4 rounded-lg", children: [
+        /* @__PURE__ */ jsx("h3", { class: "text-lg font-bold mb-2", children: "12. IIFE with Parameters" }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JEON:" }),
+        /* @__PURE__ */ jsxs("div", { class: "collapsible-code", children: [
+          /* @__PURE__ */ jsxs("button", { class: "collapsible-btn", children: [
+            /* @__PURE__ */ jsx("span", { class: "mr-2", children: "▼" }),
+            " Show JEON"
+          ] }),
+          /* @__PURE__ */ jsx("div", { class: "collapsible-content hidden", children: /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded mb-3 text-sm overflow-x-auto language-json", children: /* @__PURE__ */ jsx("code", { class: "language-json", children: jeonExample12 }) }) })
+        ] }),
+        /* @__PURE__ */ jsx("p", { class: "font-medium mb-2", children: "JavaScript:" }),
+        /* @__PURE__ */ jsx("pre", { class: "bg-gray-100 p-3 rounded text-sm overflow-x-auto language-JavaScript", children: /* @__PURE__ */ jsx("code", { class: "language-JavaScript", children: tsExample12 }) }),
+        /* @__PURE__ */ jsx("p", { class: "text-sm text-gray-600 mt-2", children: "Note: IIFEs with parameters are automatically unwrapped during conversion" })
       ] })
     ] })
   ] }) });
@@ -20737,5 +21707,5 @@ const initCollapsible = () => {
 effect(() => {
   initCollapsible();
 });
-render(/* @__PURE__ */ jsx$1(App, {}), document.getElementById("app"));
-//# sourceMappingURL=index-C74H85A_.js.map
+render(/* @__PURE__ */ jsx(App, {}), document.getElementById("app"));
+//# sourceMappingURL=index-BCMxFI7X.js.map

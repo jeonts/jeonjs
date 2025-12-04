@@ -37,8 +37,15 @@ export function visitFunctionDeclaration(keys: string[], jeon: any, visit: (item
             if (closure) {
                 // Create a function that calls evalJeon with the body and parameters
                 const contextObj = params.map(p => `${p}: ${p}`).join(', ')
+
+                // Extract the actual JEON body object (handle array-wrapped bodies)
+                let jeonBody = body
+                if (Array.isArray(body) && body.length === 1 && typeof body[0] === 'object' && body[0] !== null) {
+                    jeonBody = body[0]
+                }
+
                 // Use JSON.stringify with indentation to preserve formatting
-                const formattedBody = jsonImpl ? jsonImpl.stringify(body, null, 2) : JSON.stringify(body, null, 2)
+                const formattedBody = jsonImpl ? jsonImpl.stringify(jeonBody, null, 2) : JSON.stringify(jeonBody, null, 2)
                 return `${key.split('(')[0]}(${params.join(', ')}) { return evalJeon(${formattedBody}, {${contextObj}}); }`
             }
 
