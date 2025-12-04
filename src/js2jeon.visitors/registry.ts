@@ -42,6 +42,7 @@ import { visitTryStatement } from './tryStatement'
 import { visitParenthesizedExpression } from './parenthesizedExpression'
 import { visitEmptyStatement } from './emptyStatement'
 import { visitCommentNode } from './commentNode'
+import { visitSequenceExpression } from './sequenceExpression'
 
 export const visitorRegistry: Record<string, (node: any, options?: { json?: typeof JSON }) => any> = {
     'BinaryExpression': (node, options) => visitBinaryExpression(node, options),
@@ -87,4 +88,5 @@ export const visitorRegistry: Record<string, (node: any, options?: { json?: type
     'ParenthesizedExpression': (node, options) => visitParenthesizedExpression(node, options),
     'EmptyStatement': (node, options) => visitEmptyStatement(node, options),
     'CommentNode': (node) => visitCommentNode(node),
+    'SequenceExpression': (node, options) => visitSequenceExpression(node, options),
 }

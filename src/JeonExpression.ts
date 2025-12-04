@@ -40,6 +40,7 @@ export interface JeonOperatorMap {
     'return': JeonValue
     '//': JeonValue
     '/ /': { pattern: string; flags: string } | JeonObject
+    ',': JeonArray
 }
 export type JeonExpression = JeonValue | {
     [K in keyof JeonOperatorMap]: JeonOperatorMap[K]

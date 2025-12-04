@@ -9,10 +9,7 @@ function safeEval(expr: string): any {
 }
 
 // Test 1: Function declaration only
-const code1 = `function a(name) { 
-    return 'Hello, ' + name; 
-}
-  a('world');
+const code1 = `j
 `
 
 console.log('=== Test 1: Function declaration only ===')

@@ -230,6 +230,13 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
         case '...':
             return `...${visit(operands)}`
 
+        case ',':
+            // Handle sequence expressions (comma operator)
+            if (Array.isArray(operands)) {
+                return operands.map(operand => visit(operand)).join(', ')
+            }
+            break
+
         case 'yield':
             if (operands === null) {
                 return `yield`
