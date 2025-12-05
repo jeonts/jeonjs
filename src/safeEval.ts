@@ -61,6 +61,16 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
             // Return value from context, or fallback to safeContext, or undefined if not found
             return context[cleanName] ?? safeContext[cleanName]
         }
+
+        // For plain identifiers (not starting with @), check if they exist in context or safeContext
+        if (context[jeon] !== undefined) {
+            return context[jeon]
+        }
+
+        if (safeContext[jeon] !== undefined) {
+            return safeContext[jeon]
+        }
+
         return jeon
     }
 
@@ -75,26 +85,56 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
         // Special handling: if any statement is a return, return its value immediately
         for (let i = 0; i < jeon.length; i++) {
             const item = jeon[i]
+
+            // If this is a function declaration (regular or generator), 
+            // add it to the context so it's available for subsequent statements
+            // but don't evaluate the body immediately
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+                const keys = Object.keys(item)
+                const functionDeclarationKey = keys.find(key => key.startsWith('function') || key.startsWith('function*'))
+                if (functionDeclarationKey) {
+                    // Extract function name from the key
+                    const nameMatch = functionDeclarationKey.match(/function\*?\s+(\w+)/)
+                    if (nameMatch) {
+                        const functionName = nameMatch[1]
+                        // Create the function without evaluating its body immediately
+                        const functionResult = evalJeon(item, context)
+                        context[functionName] = functionResult
+
+                        // If this is the last item, return its result
+                        if (i === jeon.length - 1) {
+                            return functionResult
+                        }
+                        continue // Skip normal evaluation for function declarations
+                    }
+                }
+
+                // If this is a class declaration, add it to the context so it's available for subsequent statements
+                const classDeclarationKey = keys.find(key => key.startsWith('class '))
+                if (classDeclarationKey) {
+                    // Extract class name from the key
+                    const classNameMatch = classDeclarationKey.match(/class\s+(\w+)/)
+                    if (classNameMatch) {
+                        const className = classNameMatch[1]
+                        const classResult = evalJeon(item, context)
+                        context[className] = classResult
+
+                        // If this is the last item, return its result
+                        if (i === jeon.length - 1) {
+                            return classResult
+                        }
+                        continue // Skip normal evaluation for class declarations
+                    }
+                }
+            }
+
+            // Normal evaluation for non-declaration items
             const result = evalJeon(item, context)
 
             // If this is a return statement, return its value immediately
             // Check if the original item was a return statement object
             if (item && typeof item === 'object' && !Array.isArray(item) && item['return'] !== undefined) {
                 return result
-            }
-
-            // If this is a function declaration, add it to the context so it's available for subsequent statements
-            if (item && typeof item === 'object' && !Array.isArray(item)) {
-                const keys = Object.keys(item)
-                const functionDeclarationKey = keys.find(key => key.startsWith('function'))
-                if (functionDeclarationKey) {
-                    // Extract function name from the key
-                    const nameMatch = functionDeclarationKey.match(/function\s+(\w+)/)
-                    if (nameMatch) {
-                        const functionName = nameMatch[1]
-                        context[functionName] = result
-                    }
-                }
             }
 
             // If this is the last item, return its result
@@ -116,11 +156,90 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
             return {}
         }
 
+        // Check for class declarations (e.g., "class Person")
+        const classDeclarationKey = keys.find(key => key.startsWith('class '))
+        if (classDeclarationKey) {
+            // Extract class name from the key
+            const classNameMatch = classDeclarationKey.match(/class\s+(\w+)/)
+            if (classNameMatch) {
+                const className = classNameMatch[1]
+                const classDef = (jeon as any)[classDeclarationKey]
+
+                // Create a class constructor that uses evalJeon internally
+                const ClassConstructor = function (this: any, ...args: any[]) {
+                    // Find constructor in class definition
+                    const constructorKey = Object.keys(classDef).find(key => key.startsWith('constructor'))
+                    if (constructorKey) {
+                        const constructorBody = classDef[constructorKey]
+
+                        // Extract parameter names from constructor signature
+                        const paramMatch = constructorKey.match(/\(([^)]*)\)/)
+                        const params: string[] = paramMatch ? paramMatch[1].split(',').map((p: string) => p.trim()).filter((p: string) => p) : []
+
+                        // Create context with parameters and 'this'
+                        const constructorContext: any = { this: this }
+                        params.forEach((param: string, index: number) => {
+                            constructorContext[param] = args[index]
+                        })
+
+                        // Execute constructor body statements with evalJeon
+                        if (Array.isArray(constructorBody)) {
+                            for (const statement of constructorBody) {
+                                evalJeon(statement, constructorContext)
+                            }
+                        }
+                    }
+                }
+
+                // Add methods to prototype
+                const methodKeys = Object.keys(classDef).filter(key => key.includes('(') && !key.startsWith('constructor'))
+                methodKeys.forEach(methodKey => {
+                    const methodName = methodKey.split('(')[0]
+                    const methodBody = classDef[methodKey]
+
+                    // Extract method parameters
+                    const methodParamMatch = methodKey.match(/\(([^)]*)\)/)
+                    let methodParams: string[] = []
+                    if (methodParamMatch && methodParamMatch[1]) {
+                        methodParams = methodParamMatch[1].split(',').map((p: string) => p.trim()).filter((p: string) => p)
+                    }
+
+                    // Create method function
+                    (ClassConstructor as any).prototype[methodName] = function (this: any, ...args: any[]) {
+                        // Create context with parameters and 'this'
+                        const methodContext: any = { this: this }
+                        methodParams.forEach((param: string, index: number) => {
+                            methodContext[param] = args[index]
+                        })
+
+                        // Execute method body statements with evalJeon
+                        if (Array.isArray(methodBody)) {
+                            let result: any
+                            for (const statement of methodBody) {
+                                result = evalJeon(statement, methodContext)
+
+                                // Handle return statements
+                                if (statement && typeof statement === 'object' && !Array.isArray(statement) && statement['return'] !== undefined) {
+                                    return result
+                                }
+                            }
+                            return result
+                        }
+                    }
+                })
+
+                // Add class to context so it can be used
+                context[className] = ClassConstructor
+
+                // Return the class constructor
+                return ClassConstructor
+            }
+        }
+
         // Handle single-key objects (operators, etc.)
         if (keys.length === 1) {
             const op = keys[0] as keyof JeonOperatorMap
             const operands = jeon[op]
-
             // Handle arithmetic and comparison operators
             switch (op) {
                 case '-':
@@ -326,9 +445,31 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                         // Chain property access
                         let result = obj
                         for (let i = 1; i < operands.length; i++) {
-                            const prop = evalJeon(operands[i], context)
+                            // For property names, we should treat them as literals, not variable references
+                            // So we don't use evalJeon directly on them
+                            let prop: string
+                            const propOperand = operands[i]
+                            if (typeof propOperand === 'string') {
+                                // If it's a string starting with @, it's a variable reference
+                                if (propOperand.startsWith('@')) {
+                                    const cleanName = propOperand.substring(1)
+                                    prop = context[cleanName] ?? safeContext[cleanName]
+                                } else {
+                                    // Otherwise, treat it as a literal property name
+                                    prop = propOperand
+                                }
+                            } else {
+                                // For non-string operands, evaluate them normally
+                                prop = evalJeon(propOperand, context)
+                            }
+
                             if (result && typeof result === 'object' && prop in result) {
                                 result = result[prop]
+                                // If this is a method (function) and we're accessing it from an object,
+                                // bind the object as 'this' context
+                                if (typeof result === 'function' && i === operands.length - 1) {
+                                    result = result.bind(obj)
+                                }
                             } else {
                                 // If we can't access the property, return undefined
                                 return undefined
@@ -337,7 +478,6 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                         return result
                     }
                     break
-
                 // Handle sequence expressions (comma operator)
                 case ',':
                     if (Array.isArray(operands)) {
@@ -374,16 +514,8 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                         const constructor = evalJeon(operands[0], context)
                         const args = operands.slice(1).map(arg => evalJeon(arg, context))
                         // Handle constructor with different argument counts
-                        if (args.length === 0) {
-                            return new constructor()
-                        } else if (args.length === 1) {
-                            return new constructor(args[0])
-                        } else {
-                            // For multiple arguments, we need to call the constructor properly
-                            // Using apply to handle the arguments array
-                            const argsArray: any[] = [null, ...args]
-                            return new (Function.prototype.bind as any)(constructor, ...argsArray)()
-                        }
+                        // Use Reflect.construct or Function.prototype.apply for proper instantiation
+                        return new constructor(...args)
                     }
                     break
 
@@ -424,15 +556,29 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                         let varName: string
                         if (typeof varNameExpr === 'string' && varNameExpr.startsWith('@')) {
                             varName = varNameExpr.substring(1) // Remove the '@' prefix
+                        } else if (typeof varNameExpr === 'string') {
+                            varName = varNameExpr
                         } else {
                             varName = evalJeon(varNameExpr, context) as string
                         }
 
-                        // Reject shortcuts like @this.name - must use explicit { '.': ['@this', 'name'] }
-                        if (varName.includes('.')) {
-                            throw new Error(`Invalid assignment target '@${varName}': member access shortcuts not allowed. Use explicit '.' operator: { ".": ["@${varName.split('.')[0]}", ...] }`)
+                        // Handle property assignment like { '.': ['@this', 'name'] }
+                        if (varNameExpr && typeof varNameExpr === 'object' && !Array.isArray(varNameExpr) && '.' in varNameExpr) {
+                            // This is a property assignment like this.name = value
+                            const propAccessExpr = varNameExpr['.'] as any[]
+                            if (Array.isArray(propAccessExpr) && propAccessExpr.length >= 2) {
+                                const obj = evalJeon(propAccessExpr[0], context)
+                                // For property names, we should use them literally, not look them up in context
+                                const prop = propAccessExpr[1]
+                                obj[prop] = value
+                                return value
+                            }
                         }
 
+                        // Reject shortcuts like @this.name - must use explicit { '.': ['@this', 'name'] }
+                        if (typeof varName === 'string' && varName.includes('.')) {
+                            throw new Error(`Invalid assignment target '@${varName}': member access shortcuts not allowed. Use explicit '.' operator: { ".": ["@${varName.split('.')[0]}", ...] }`)
+                        }
                         // Handle simple variable assignment
                         context[varName] = value
                         return value
@@ -442,6 +588,18 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                 // Handle return statement
                 case 'return':
                     return evalJeon(operands, context)
+
+                // Handle yield statement
+                case 'yield':
+                    // Yield statements are handled within generator functions
+                    // This case should not be reached in normal evaluation
+                    throw new Error('yield can only be used inside generator functions')
+
+                // Handle yield* statement
+                case 'yield*':
+                    // Yield* statements are handled within generator functions
+                    // This case should not be reached in normal evaluation
+                    throw new Error('yield* can only be used inside generator functions')
 
                 // Handle if statements
                 case 'if':
@@ -479,6 +637,31 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                         return result
                     }
                     break
+
+                case '++':
+                    if (operands !== undefined) {
+                        // Handle unary increment (postfix and prefix)
+                        // For simplicity, we'll treat both the same way in JEON representation
+                        const varNameExpr = operands
+                        let varName: string
+                        if (typeof varNameExpr === 'string' && varNameExpr.startsWith('@')) {
+                            varName = varNameExpr.substring(1) // Remove the '@' prefix
+                        } else if (typeof varNameExpr === 'string') {
+                            varName = varNameExpr
+                        } else {
+                            varName = evalJeon(varNameExpr, context) as string
+                        }
+
+                        // Get current value, increment it, and store it back
+                        const currentValue = context[varName] ?? safeContext[varName] ?? 0
+                        const newValue = currentValue + 1
+                        context[varName] = newValue
+                        // For postfix increment (i++), we should return the original value
+                        // Since we don't distinguish between postfix and prefix in JEON,
+                        // we'll assume it's postfix and return the original value
+                        return currentValue
+                    }
+                    break
             }
         }
 
@@ -499,38 +682,55 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                 })
 
                 // Evaluate the function body with the new context
-                return evalJeon(body, functionContext)
+                // The body is an array of statements
+                if (Array.isArray(body)) {
+                    // Create a generator that can handle nested control structures
+                    return createGeneratorFromStatements(body, functionContext)
+                } else {
+                    // Single statement body
+                    return evalJeon(body, functionContext)
+                }
             }
         }
 
         // Check for named function declarations (e.g., "function sum(a,b)")
-        const functionDeclarationKey = keys.find(key => key.startsWith('function'))
+        const functionDeclarationKey = keys.find(key => key.startsWith('function') && !key.startsWith('function*'))
         if (functionDeclarationKey) {
             // Extract function name and parameters from the key
             // The key format is like "function name(param1, param2)" or "function(param1, param2)"
-            const nameMatch = functionDeclarationKey.match(/function\s*(?:\w*\s*)?\(([^)]*)\)/)
-            const paramStr = nameMatch ? nameMatch[1] : ''
-            const params = paramStr ? paramStr.split(',').map(p => p.trim()).filter(p => p) : []
+            let paramStr = ''
+            const nameMatch = functionDeclarationKey.match(/function\s+(\w+)\s*\(([^)]*)\)/)
+            if (nameMatch) {
+                const funcName = nameMatch[1]
+                paramStr = nameMatch[2]
+            } else {
+                // Handle anonymous function case
+                const anonMatch = functionDeclarationKey.match(/function\s*\(([^)]*)\)/)
+                if (anonMatch) {
+                    paramStr = anonMatch[1]
+                }
+            }
+            const params = paramStr ? paramStr.split(',').map((p: string) => p.trim()).filter((p: string) => p) : []
             const body = (jeon as any)[functionDeclarationKey]
 
             // Create and return a JavaScript function
             return function (...args: any[]) {
                 // Create a new context with the parameters
                 const functionContext = { ...context }
-                params.forEach((param, index) => {
+                params.forEach((param: string, index: number) => {
                     functionContext[param] = args[index]
                 })
 
                 // Evaluate the function body with the new context
                 // The body is an array of statements
                 if (Array.isArray(body)) {
-                    let result
+                    let result: any
                     for (const stmt of body) {
                         result = evalJeon(stmt, functionContext)
 
                         // If this is a return statement, return its value immediately
                         if (stmt && typeof stmt === 'object' && !Array.isArray(stmt) && stmt['return'] !== undefined) {
-                            return result
+                            return evalJeon(stmt['return'], functionContext)
                         }
                     }
                     return result
@@ -581,6 +781,36 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
             }
         }
 
+        // Check for generator function declarations (e.g., "function* countUpTo(max)")
+        const generatorFunctionDeclarationKey = keys.find(key => key.startsWith('function*'))
+        if (generatorFunctionDeclarationKey) {
+            // Extract function name and parameters from the key
+            const nameMatch = generatorFunctionDeclarationKey.match(/function\* (\w+)\(([^)]*)\)/)
+            if (nameMatch) {
+                const funcName = nameMatch[1]
+                const paramStr = nameMatch[2]
+                const params = paramStr ? paramStr.split(',').map(p => p.trim()).filter(p => p) : []
+                const body = (jeon as any)[generatorFunctionDeclarationKey]
+
+                // Create and return a generator function
+                // We'll simulate generator behavior by returning an iterator object
+                return function* (...args: any[]) {
+                    // Create a new context with the parameters
+                    const functionContext = { ...context }
+                    params.forEach((param, index) => {
+                        functionContext[param] = args[index]
+                    })
+
+                    // Evaluate the function body with the new context
+                    // The body is an array of statements
+                    if (Array.isArray(body)) {
+                        // Create a generator that can handle nested control structures
+                        return yield* createGeneratorFromStatements(body, functionContext)
+                    }
+                }
+            }
+        }
+
         // Handle array literals (special case where key is "[")
         if (keys.length === 1 && keys[0] === '[') {
             const arrayItems = (jeon as JeonObject)['[']
@@ -591,7 +821,13 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                     if (typeof item === 'object' && item !== null && !Array.isArray(item) && '...' in item) {
                         // Handle spread operator
                         const spreadValue = evalJeon(item['...'], context)
-                        if (Array.isArray(spreadValue)) {
+                        // Check if spreadValue is an iterable (like a generator)
+                        if (spreadValue && typeof spreadValue[Symbol.iterator] === 'function') {
+                            // Consume the iterator and push all values
+                            for (const value of spreadValue) {
+                                result.push(value)
+                            }
+                        } else if (Array.isArray(spreadValue)) {
                             result.push(...spreadValue)
                         } else {
                             result.push(spreadValue)
@@ -608,11 +844,41 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
         if (keys.length === 1 && (keys[0] === '@' || keys[0] === '@@')) {
             const declarations = (jeon as JeonObject)[keys[0]]
             if (typeof declarations === 'object' && declarations !== null) {
-                // Process each variable declaration
-                for (const [varName, valueExpr] of Object.entries(declarations)) {
-                    // For uninitialized variables (represented by @undefined sentinel), set to undefined
-                    const value = valueExpr === '@undefined' ? undefined : evalJeon(valueExpr, context)
-                    context[varName] = value
+                // Check if this is a destructuring assignment by looking for the special _destructuring_source key
+                if ('_destructuring_source' in declarations) {
+                    // This is a destructuring assignment
+                    const sourceExpr = declarations['_destructuring_source']
+                    const sourceValue = sourceExpr ? evalJeon(sourceExpr, context) : {}
+                    
+                    // Process each variable declaration
+                    for (const [varName, valueExpr] of Object.entries(declarations)) {
+                        if (varName === '_destructuring_source') {
+                            // Skip the source expression
+                            continue
+                        }
+                        
+                        // Check if this is a destructured property (marked with @[propName])
+                        if (typeof valueExpr === 'string' && valueExpr.startsWith('@[') && valueExpr.endsWith(']')) {
+                            // Extract the property name from the marker
+                            const propName = valueExpr.substring(2, valueExpr.length - 1)
+                            // Get the value from the source object
+                            const value = sourceValue && typeof sourceValue === 'object' && propName in sourceValue 
+                                ? sourceValue[propName] 
+                                : undefined
+                            context[varName] = value
+                        } else {
+                            // Regular variable assignment
+                            const value = valueExpr === '@undefined' ? undefined : evalJeon(valueExpr, context)
+                            context[varName] = value
+                        }
+                    }
+                } else {
+                    // Regular variable declarations
+                    for (const [varName, valueExpr] of Object.entries(declarations)) {
+                        // For uninitialized variables (represented by @undefined sentinel), set to undefined
+                        const value = valueExpr === '@undefined' ? undefined : evalJeon(valueExpr, context)
+                        context[varName] = value
+                    }
                 }
             }
             // Variable declaration statements return undefined in JavaScript
@@ -629,4 +895,117 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
 
     // Fallback - return as is
     return jeon
+}
+
+// Helper function to process statements within generator functions
+function processStatementInGenerator(stmt: any, context: Record<string, any>) {
+    // This function is called from within a generator function context
+    // We need to handle yield statements specially
+
+    // Check if this is a yield statement
+    if (stmt && typeof stmt === 'object' && !Array.isArray(stmt) && 'yield' in stmt) {
+        const yieldValue = evalJeon(stmt['yield'], context)
+        // In a real generator, we would yield here, but since this is a helper function,
+        // we need to handle this differently
+        throw new Error('Yield statement encountered in non-generator context')
+    } else if (stmt && typeof stmt === 'object' && !Array.isArray(stmt) && 'yield*' in stmt) {
+        // Handle yield* (delegating yield)
+        const iterable = evalJeon(stmt['yield*'], context)
+        if (iterable && typeof iterable[Symbol.iterator] === 'function') {
+            // In a real generator, we would yield* here
+            throw new Error('Yield* statement encountered in non-generator context')
+        }
+    } else if (stmt && typeof stmt === 'object' && !Array.isArray(stmt) && 'return' in stmt) {
+        // Handle return statement
+        const returnValue = evalJeon(stmt['return'], context)
+        return returnValue
+    } else {
+        // For other statements, evaluate normally
+        evalJeon(stmt, context)
+    }
+}
+
+// Helper function to process statements in while loops within generator functions
+function processStatementInWhileLoop(stmt: any, context: Record<string, any>) {
+    // This is a simplified approach - in reality, we'd need a more complex solution
+    // For now, we'll just evaluate the statement normally
+    evalJeon(stmt, context)
+}
+
+// Helper function to create a generator from statements
+function* createGeneratorFromStatements(statements: any[], context: Record<string, any>): Generator<any, any, any> {
+    for (const stmt of statements) {
+        // Check if this is a yield statement
+        if (stmt && typeof stmt === 'object' && !Array.isArray(stmt) && 'yield' in stmt) {
+            const yieldValue = evalJeon(stmt['yield'], context)
+            yield yieldValue
+        } else if (stmt && typeof stmt === 'object' && !Array.isArray(stmt) && 'yield*' in stmt) {
+            // Handle yield* (delegating yield)
+            const iterable = evalJeon(stmt['yield*'], context)
+            if (iterable && typeof iterable[Symbol.iterator] === 'function') {
+                for (const value of iterable) {
+                    yield value
+                }
+            }
+        } else if (stmt && typeof stmt === 'object' && !Array.isArray(stmt) && 'return' in stmt) {
+            // Handle return statement
+            const returnValue = evalJeon(stmt['return'], context)
+            return returnValue
+        } else {
+            // For other statements, we need to be careful about nested control structures
+            // that might contain yield
+            if (stmt && typeof stmt === 'object' && !Array.isArray(stmt)) {
+                const stmtKeys = Object.keys(stmt)
+                if (stmtKeys.length === 1) {
+                    const op = stmtKeys[0]
+                    const operands = (stmt as any)[op]
+
+                    // Handle control structures that might contain yield
+                    if (op === 'while' && Array.isArray(operands) && operands.length === 2) {
+                        // For while loops, we need to manually iterate and check for yields
+                        while (evalJeon(operands[0], context)) {
+                            // Process the loop body statement by statement
+                            // The body might be a single statement or an array of statements
+                            if (Array.isArray(operands[1])) {
+                                yield* createGeneratorFromStatements(operands[1], context)
+                            } else {
+                                // Single statement
+                                yield* createGeneratorFromStatements([operands[1]], context)
+                            }
+                        }
+                    } else if (op === 'if' && Array.isArray(operands) && (operands.length === 2 || operands.length === 3)) {
+                        const condition = evalJeon(operands[0], context)
+                        if (condition) {
+                            // Process the if body statement by statement
+                            // The body might be a single statement or an array of statements
+                            if (Array.isArray(operands[1])) {
+                                yield* createGeneratorFromStatements(operands[1], context)
+                            } else {
+                                // Single statement
+                                yield* createGeneratorFromStatements([operands[1]], context)
+                            }
+                        } else if (operands.length === 3) {
+                            // Process the else body statement by statement
+                            // The body might be a single statement or an array of statements
+                            if (Array.isArray(operands[2])) {
+                                yield* createGeneratorFromStatements(operands[2], context)
+                            } else {
+                                // Single statement
+                                yield* createGeneratorFromStatements([operands[2]], context)
+                            }
+                        }
+                    } else {
+                        // For other operators, evaluate normally
+                        evalJeon(stmt, context)
+                    }
+                } else {
+                    // For complex objects, evaluate normally
+                    evalJeon(stmt, context)
+                }
+            } else {
+                // For primitives and arrays, evaluate normally
+                evalJeon(stmt, context)
+            }
+        }
+    }
 }

@@ -23,7 +23,15 @@ export interface JeonOperatorMap {
     '||': JeonArray
     '!': JeonValue
     '~': JeonValue
+    '&': JeonArray
+    '|': JeonArray
+    '^': JeonArray
+    '<<': JeonArray
+    '>>': JeonArray
+    '>>>': JeonArray
     'typeof': JeonValue
+    'void': JeonValue
+    'delete': JeonValue
     '(': JeonValue
     '?': JeonArray
     '()': JeonArray
@@ -31,13 +39,32 @@ export interface JeonOperatorMap {
     'new': JeonArray
     '...': JeonValue
     '=': JeonArray
+    '+=': JeonArray
+    '-=': JeonArray
+    '*=': JeonArray
+    '/=': JeonArray
+    '%=': JeonArray
+    '<<=': JeonArray
+    '>>=': JeonArray
+    '>>>=': JeonArray
+    '&=': JeonArray
+    '^=': JeonArray
+    '|=': JeonArray
+    '++': JeonValue
+    '--': JeonValue
+    '++postfix': JeonValue
+    '--postfix': JeonValue
     'if': JeonArray
     'while': JeonArray
     'for': JeonArray
     'function': JeonArray
     'async function': JeonArray
+    'function*': JeonArray
     '=>': JeonArray
     'return': JeonValue
+    'yield': JeonValue
+    'yield*': JeonValue
+    'await': JeonValue
     '//': JeonValue
     '/ /': { pattern: string; flags: string } | JeonObject
     ',': JeonArray

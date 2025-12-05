@@ -164,6 +164,23 @@ export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
             for (const decl of (node as acorn.VariableDeclaration).declarations) {
                 if (decl.id.type === 'Identifier') {
                     declarations[(decl.id as acorn.Identifier).name] = decl.init ? ast2jeon(decl.init, options) : null
+                } else if (decl.id.type === 'ObjectPattern') {
+                    // Handle object destructuring patterns like const {a, b} = obj
+                    // For now, we'll create individual variable assignments for each property
+                    // This is a simplified approach - in a full implementation, we'd need to 
+                    // evaluate the right-hand side and extract properties
+                    const initExpr = decl.init ? ast2jeon(decl.init, options) : null
+                    // Store the initialization expression so we can reference it later
+                    declarations[`_destructuring_source`] = initExpr
+                    
+                    // For each property in the object pattern, create a variable assignment
+                    for (const prop of (decl.id as acorn.ObjectPattern).properties) {
+                        if (prop.type === 'Property' && prop.key.type === 'Identifier') {
+                            const propName = (prop.key as acorn.Identifier).name
+                            // We'll mark these as needing to be resolved from the source object
+                            declarations[propName] = `@[${propName}]` // Special marker for destructured properties
+                        }
+                    }
                 }
             }
             return {

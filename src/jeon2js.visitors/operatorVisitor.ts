@@ -49,6 +49,26 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
                 return `${visit(operands)}${actualOp}`
             }
             break
+
+        case '()':
+            // Handle function call operator
+            if (Array.isArray(operands) && operands.length >= 1) {
+                const funcExpr = visit(operands[0])
+                const args = operands.slice(1).map(arg => visit(arg))
+
+                // Special handling for arrow functions and function expressions
+                // that need to be wrapped in parentheses for immediate invocation
+                let formattedFuncExpr = funcExpr
+                if (funcExpr.includes('=>') || funcExpr.includes('function')) {
+                    // Check if the function expression is already wrapped in parentheses
+                    if (!funcExpr.startsWith('(') || !funcExpr.endsWith(')')) {
+                        formattedFuncExpr = `(${funcExpr})`
+                    }
+                }
+
+                return `${formattedFuncExpr}(${args.join(', ')})`
+            }
+            break
     }
 
     switch (op) {
@@ -105,7 +125,7 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
             return '[]'
 
         case '(':
-            // Handle parentheses expressions
+            // Handle parentheses expressions'{}
             return `(${visit(operands)})`
 
         case '//':
