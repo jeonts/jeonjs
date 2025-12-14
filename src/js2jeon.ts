@@ -15,35 +15,67 @@ export function js2jeon(code: string, options?: { json?: typeof JSON, iife?: boo
         // Array to collect comments
         const comments: any[] = []
 
-        // If iife option is enabled, wrap the code in parentheses for expressions
-        let codeToParse = code;
+        // If iife option is enabled, try to automatically detect and handle expressions
+        let codeToParse = code
         if (options?.iife) {
-            // Check if the code looks like a standalone expression that might be parsed incorrectly
-            // For example, {} gets parsed as a block statement, not an object literal
-            const trimmedCode = code.trim();
-            
-            // Check for common expression patterns that need parentheses
-            if (
-                // Object literals
-                (trimmedCode.startsWith('{') && trimmedCode.endsWith('}')) ||
-                // Array literals
-                (trimmedCode.startsWith('[') && trimmedCode.endsWith(']')) ||
-                // Regex literals
-                trimmedCode.startsWith('/') ||
-                // Template literals
-                trimmedCode.startsWith('`') ||
-                // Arrow functions without braces
-                (trimmedCode.includes('=>') && !trimmedCode.includes('{')) ||
-                // Simple identifiers that could be expressions
-                (!trimmedCode.includes(' ') && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(trimmedCode) && !['return', 'const', 'let', 'var', 'function', 'class', 'if', 'for', 'while', 'switch', 'try', 'catch', 'finally', 'break', 'continue', 'throw', 'debugger', 'do', 'with', 'export', 'import', 'yield', 'await', 'async', 'static', 'get', 'set', 'extends'].includes(trimmedCode))
-            ) {
-                codeToParse = `(${code})`;
+            const trimmedCode = code.trim()
+
+            // Step 1: Try to parse as-is
+            let ast: acorn.Program
+            let parseSuccess = false
+            let shouldTryParentheses = false
+
+            try {
+                const Parser = acorn.Parser.extend(jsx())
+                ast = Parser.parse(trimmedCode, {
+                    ecmaVersion: 'latest',
+                    sourceType: 'module',
+                    allowReturnOutsideFunction: true,
+                    preserveParens: true
+                })
+
+                // Check if we should try parentheses for better expression handling
+                // Specifically for empty blocks {} which should be object expressions
+                if (ast.body.length === 1 &&
+                    ast.body[0].type === 'BlockStatement' &&
+                    (ast.body[0] as acorn.BlockStatement).body.length === 0) {
+                    shouldTryParentheses = true
+                }
+                // Also check for other cases that might benefit from parentheses
+                else if (ast.body.length === 1 &&
+                    ast.body[0].type === 'ExpressionStatement' &&
+                    (ast.body[0] as acorn.ExpressionStatement).expression.type === 'ObjectExpression') {
+                    // Already correctly parsed as object expression, no need for parentheses
+                }
+
+                parseSuccess = true && !shouldTryParentheses
+            } catch (initialParseError) {
+                // Step 2: Try auto fix with () for {} maybe object literal
+                shouldTryParentheses = true
+            }
+
+            // If we determined we should try parentheses, do so now
+            if (shouldTryParentheses) {
+                try {
+                    const Parser = acorn.Parser.extend(jsx())
+                    ast = Parser.parse(`(${trimmedCode})`, {
+                        ecmaVersion: 'latest',
+                        sourceType: 'module',
+                        allowReturnOutsideFunction: true,
+                        preserveParens: true
+                    })
+                    codeToParse = `(${trimmedCode})`
+                    parseSuccess = true
+                } catch (parenParseError) {
+                    // Still error? Report & stop
+                    throw parenParseError
+                }
             }
         }
 
         // Parse the JavaScript/JavaScript code using Acorn with JSX support
         const Parser = acorn.Parser.extend(jsx())
-        const ast: any = Parser.parse(codeToParse, {
+        const ast: acorn.Program = Parser.parse(codeToParse, {
             ecmaVersion: 'latest',
             sourceType: 'module',
             allowReturnOutsideFunction: true,
@@ -60,8 +92,5 @@ export function js2jeon(code: string, options?: { json?: typeof JSON, iife?: boo
         console.error('Error parsing JavaScript/JavaScript code:', error)
         // Return error message in JEON format instead of null
         throw error
-        // return {
-        //     "error": `Parsing Error: ${error.message}`   
-        // }
     }
 }

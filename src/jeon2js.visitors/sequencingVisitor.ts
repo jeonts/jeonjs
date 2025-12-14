@@ -4,9 +4,8 @@
  * @param operands The operands for the sequencing
  * @param visit The visitor function to process nested elements
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
- * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
-export function visitSequencing(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
+export function visitSequencing(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON): string {
     // Handle sequencing blocks
     if (op === 'do' && Array.isArray(operands)) {
         const statements = operands.map(expr => visit(expr)).join(';\n  ')

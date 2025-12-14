@@ -98,6 +98,10 @@ const case13 = `
 [1, 2, ...[3, 4], 5];
 `
 
+const case13_1 = `
+[1, 2, [3, 4], 5];
+`
+
 const case14 = `
 {}
 `//return empty object literal
@@ -195,7 +199,7 @@ new (class Person {
   greet() {
   return ("Hello, " + this.name)
 }
-})('Mary).greet()
+})('Mary').greet()
 `
 
 
@@ -314,6 +318,39 @@ a([1, 2, 3, 4, 5])
 `
 
 const case37 = `
-const {a,b} = {a:1, b:3}
+const {a,b, ...rest} = {a:1, b:3}
 a+b
 `
+const case38 = `
+const [head, a,b, ...rest] = [1, 2, 3, 4, 5]
+a+b
+`
+
+const case39 = `
+const [x, y, [nestedA, nestedB]] =  {
+        x: 1,
+        y: 2,
+        z: {
+          nestedA: 3,
+          nestedB: 4
+        }
+      }
+        
+x + y + ' ' +  nestedA + ' ' + nestedB
+`
+
+const case40 = `
+const [a, , b] = [1, 2, 3]
+a + b
+`
+
+const case41 = `
+const [first, ...rest] = [1, 2, 3, 4, 5]
+first + rest.length
+`
+
+const case42 = `
+const obj = {a:1, b:3, 3:5}
+obj['a'] + obj.b + obj[3]
+`
+

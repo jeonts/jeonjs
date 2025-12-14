@@ -12,15 +12,10 @@ test('Example demonstrating closure feature for safe evaluation', () => {
         }
     }
 
-    console.log('=== Regular Mode (closure=false) ===')
-    const regularJs = jeon2js(functionJeon)
+    console.log('=== Conversion Mode ===')
+    const js = jeon2js(functionJeon)
     console.log('Generated JavaScript:')
-    console.log(regularJs)
-
-    console.log('\n=== Closure Mode (closure=true) ===')
-    const closureJs = jeon2js(functionJeon, { closure: true })
-    console.log('Generated JavaScript with closure:')
-    console.log(closureJs)
+    console.log(js)
 
     // Example with arrow function
     const arrowFunctionJeon = {
@@ -29,13 +24,9 @@ test('Example demonstrating closure feature for safe evaluation', () => {
         }
     }
 
-    console.log('\n=== Arrow Function - Regular Mode ===')
-    const regularArrowJs = jeon2js(arrowFunctionJeon)
-    console.log(regularArrowJs)
-
-    console.log('\n=== Arrow Function - Closure Mode ===')
-    const closureArrowJs = jeon2js(arrowFunctionJeon, { closure: true })
-    console.log(closureArrowJs)
+    console.log('\n=== Arrow Function Conversion ===')
+    const arrowJs = jeon2js(arrowFunctionJeon)
+    console.log(arrowJs)
 
     // Example with class containing getters/setters
     const classJeon = {
@@ -49,22 +40,15 @@ test('Example demonstrating closure feature for safe evaluation', () => {
         }
     }
 
-    console.log('\n=== Class with Getters - Regular Mode ===')
-    const regularClassJs = jeon2js(classJeon)
-    console.log(regularClassJs)
-
-    console.log('\n=== Class with Getters - Closure Mode ===')
-    const closureClassJs = jeon2js(classJeon, { closure: true })
-    console.log(closureClassJs)
+    console.log('\n=== Class with Getters Conversion ===')
+    const classJs = jeon2js(classJeon)
+    console.log(classJs)
 
     // Assertions
     expect(functionJeon).toBeDefined()
     expect(arrowFunctionJeon).toBeDefined()
     expect(classJeon).toBeDefined()
-    expect(regularJs).toBeDefined()
-    expect(closureJs).toBeDefined()
-    expect(regularArrowJs).toBeDefined()
-    expect(closureArrowJs).toBeDefined()
-    expect(regularClassJs).toBeDefined()
-    expect(closureClassJs).toBeDefined()
+    expect(js).toBeDefined()
+    expect(arrowJs).toBeDefined()
+    expect(classJs).toBeDefined()
 })

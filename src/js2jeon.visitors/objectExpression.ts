@@ -9,16 +9,9 @@ export function visitObjectExpression(node: acorn.ObjectExpression & { comments?
     for (const prop of node.properties) {
         // Handle comment nodes that we inserted
         if ((prop as any).type === 'CommentNode') {
-            // For comment nodes, we need to handle them specially
-            // We'll add them as a special marker that the object visitor can recognize
-            const commentNode = prop as any
-            // Create a unique key for each comment to avoid conflicts
-            const commentKey = `__COMMENT_${node.properties.indexOf(prop)}__`
-            obj[commentKey] = {
-                __comment__: true,
-                type: commentNode.commentType,
-                value: commentNode.value
-            }
+            // Skip comment nodes - they should not appear in the final JEON output
+            // They are handled separately by the object visitor in jeon2js
+            continue
         }
         else if (prop.type === 'Property') {
             const key = prop.key.type === 'Identifier' ? (prop.key as acorn.Identifier).name : (prop.key as acorn.Literal).value as string

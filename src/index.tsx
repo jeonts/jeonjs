@@ -55,8 +55,8 @@ return {
   const jsOutput = $('')
   const jeonOutput = $('')
   const useJSON5 = $(true)
-  const useClosure = $(false)
   const useIIFE = $(false)
+  const useJsxFunction = $(false) // Add JSX function option
   const evalResult = $('')
   const evalContext = $('{}') // Add context for evalJeon
 
@@ -224,9 +224,8 @@ return {
       // The jeonInput observable is for the reactive state that drives the UI
 
       const jeon = $$(json).parse(currentValue)
-      // Pass the JSON implementation and closure option to jeon2js
-      // Note: We do NOT format the output in 1 line even when closure is checked
-      let code = jeon2js(jeon, { json: $$(json) as unknown as JSON, closure: useClosure() })
+      // Pass the JSON implementation and JSX options to jeon2js
+      let code = jeon2js(jeon, { json: $$(json) as unknown as JSON, jsx: $$(useJsxFunction) })
 
       // If useIIFE is enabled, convert the output to IIFE format
       if ($$(useIIFE)) {
@@ -656,18 +655,7 @@ return {
           </label>
         </div>
 
-        <div class="flex items-center justify-left mb-4">
-          <input
-            type="checkbox"
-            id="useClosure"
-            checked={useClosure()}
-            onChange={(e: any) => useClosure(e.target.checked)}
-            class="mr-2"
-          />
-          <label for="useClosure" class="text-gray-600">
-            Use Closure (enables safe evaluation)
-          </label>
-        </div>
+
         <div class="flex items-center justify-left mb-4">
           <input
             type="checkbox"
@@ -678,6 +666,20 @@ return {
           />
           <label for="useIIFE" class="text-gray-600">
             Use IIFE (auto-convert JS input to IIFE format)
+          </label>
+        </div>
+
+        {/* Add JSX function checkbox */}
+        <div class="flex items-center justify-left mb-4">
+          <input
+            type="checkbox"
+            id="useJsxFunction"
+            checked={$$(useJsxFunction)}
+            onChange={(e: any) => useJsxFunction(e.target.checked)}
+            class="mr-2"
+          />
+          <label for="useJsxFunction" class="text-gray-600">
+            Use JSX Function (produce jsx() calls instead of JSX syntax)
           </label>
         </div>
 
@@ -781,52 +783,50 @@ return {
             >
               <code ref={tsOutputCodeRef} id="ts-output-code"></code>
             </pre>
-            {/* Add evalJeon button that only shows when closure is checked */}
-            <If when={() => $$(useClosure)}>
-              <div class="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                <button
-                  onClick={evaluateJsOutput}
-                  class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 ease-in-out shadow-md hover:shadow-lg flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+            {/* Add evalJeon button that always shows */}
+            <div class="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+              <button
+                onClick={evaluateJsOutput}
+                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 ease-in-out shadow-md hover:shadow-lg flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                </svg>
+                Evaluate with evalJeon
+              </button>
+
+              {/* Add context input box */}
+              <div class="mt-4">
+                <label class="block text-sm font-semibold text-green-800 mb-2 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" />
                   </svg>
-                  Evaluate with evalJeon
-                </button>
-
-                {/* Add context input box */}
-                <div class="mt-4">
-                  <label class="block text-sm font-semibold text-green-800 mb-2 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" />
-                    </svg>
-                    Evaluation Context (JSON/JSON5):
-                  </label>
-                  <textarea
-                    value={evalContext}
-                    onInput={(e: any) => evalContext(e.target.value)}
-                    class="w-full h-24 font-mono text-sm p-3 border border-green-300 rounded-md bg-white text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                    placeholder='{"variableName": "value", "anotherVar": 42}'
-                  />
-                  <p class="mt-1 text-xs text-green-600">Enter JSON context for variable evaluation</p>
-                </div>
-
-                {/* Add eval result display */}
-                <div class="mt-4">
-                  <label class="block text-sm font-semibold text-green-800 mb-2 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                    </svg>
-                    Evaluation Result:
-                  </label>
-                  <pre
-                    class="w-full h-32 font-mono text-sm p-3 border border-green-300 rounded-md bg-green-100 text-green-900 overflow-auto"
-                  >
-                    {evalResult}
-                  </pre>
-                </div>
+                  Evaluation Context (JSON/JSON5):
+                </label>
+                <textarea
+                  value={evalContext}
+                  onInput={(e: any) => evalContext(e.target.value)}
+                  class="w-full h-24 font-mono text-sm p-3 border border-green-300 rounded-md bg-white text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                  placeholder='{"variableName": "value", "anotherVar": 42}'
+                />
+                <p class="mt-1 text-xs text-green-600">Enter JSON context for variable evaluation</p>
               </div>
-            </If>
+
+              {/* Add eval result display */}
+              <div class="mt-4">
+                <label class="block text-sm font-semibold text-green-800 mb-2 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                  </svg>
+                  Evaluation Result:
+                </label>
+                <pre
+                  class="w-full h-32 font-mono text-sm p-3 border border-green-300 rounded-md bg-green-100 text-green-900 overflow-auto"
+                >
+                  {evalResult}
+                </pre>
+              </div>
+            </div>
           </div>
 
           <div class="w-full lg:w-1/2 relative">

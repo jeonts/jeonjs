@@ -23,21 +23,21 @@ console.log(yieldStarCode)
 try {
     const jeon = js2jeon(yieldStarCode)
     console.log('JEON:', JSON.stringify(jeon, null, 2))
-    
+
     // Create a context to hold the functions
     const context: any = {}
     console.log('Creating generator functions...')
     evalJeon(jeon, context)
-    
+
     // Get the delegating generator function
     const delegatingGenFunc = context.delegatingGenerator
     console.log('Generator functions created successfully')
-    
+
     // Now try to call the generator
     console.log('Calling delegating generator function...')
     const gen = delegatingGenFunc()
     console.log('Generator object:', typeof gen)
-    
+
     // Get all values from the generator
     console.log('Getting all values...')
     let count = 1
@@ -48,7 +48,7 @@ try {
         count++
     }
     console.log('Generator finished')
-    
+
 } catch (error: any) {
     console.error('Error:', error.message)
     console.error('Stack:', error.stack)

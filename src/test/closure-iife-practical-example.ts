@@ -34,14 +34,14 @@ const userPlugin: any = {
 console.log('User Plugin JEON:')
 console.log(JSON.stringify(userPlugin, null, 2))
 
-// Regular mode - direct execution (potentially unsafe)
-const regularJs = jeon2js(userPlugin, { closure: false })
+// Regular mode - direct execution
+const regularJs = jeon2js(userPlugin)
 console.log('\nGenerated JavaScript (Regular Mode):')
 console.log(regularJs)
 
-// Closure mode - safe execution through evalJeon
-const safeJs = jeon2js(userPlugin, { closure: true })
-console.log('\nGenerated JavaScript (Closure Mode - Safe):')
+// Regular mode (closure option removed)
+const safeJs = jeon2js(userPlugin)
+console.log('\nGenerated JavaScript (Closure Option Removed):')
 console.log(safeJs)
 
 // Apply IIFE conversion to the closure output
@@ -107,12 +107,12 @@ const mathPlugin: any = {
 console.log('Math Plugin JEON:')
 console.log(JSON.stringify(mathPlugin, null, 2))
 
-const mathRegular = jeon2js(mathPlugin, { closure: false })
+const mathRegular = jeon2js(mathPlugin)
 console.log('\nGenerated JavaScript (Regular Mode):')
 console.log(mathRegular)
 
-const mathSafe = jeon2js(mathPlugin, { closure: true })
-console.log('\nGenerated JavaScript (Closure Mode - Safe):')
+const mathSafe = jeon2js(mathPlugin)
+console.log('\nGenerated JavaScript (Closure Option Removed):')
 console.log(mathSafe)
 
 // Apply IIFE conversion to the closure output
@@ -166,10 +166,8 @@ jsCodeSamples.forEach((code, index) => {
 })
 
 console.log('\n\n=== Security Benefits ===')
-console.log('1. Closure mode prevents access to dangerous globals like window, document, process')
-console.log('2. IIFE conversion ensures proper scoping and prevents variable leakage')
-console.log('3. Together they create a secure sandbox for executing dynamic code')
-console.log('4. evalJeon provides controlled execution with whitelisted context')
+console.log('1. IIFE conversion ensures proper scoping and prevents variable leakage')
+console.log('2. evalJeon provides controlled execution with whitelisted context')
 
 // NEW TESTS FOR ADDITIONAL FUNCTION TYPES
 console.log('\n\n=== Additional Function Types Tests ===')
@@ -191,12 +189,12 @@ const anonymousFnJeon: any = {
 console.log('JEON Input:')
 console.log(JSON.stringify(anonymousFnJeon, null, 2))
 
-const anonymousFnRegular = jeon2js(anonymousFnJeon, { closure: false })
+const anonymousFnRegular = jeon2js(anonymousFnJeon)
 console.log('\nGenerated JavaScript (Regular Mode):')
 console.log(anonymousFnRegular)
 
-const anonymousFnSafe = jeon2js(anonymousFnJeon, { closure: true })
-console.log('\nGenerated JavaScript (Closure Mode - Safe):')
+const anonymousFnSafe = jeon2js(anonymousFnJeon)
+console.log('\nGenerated JavaScript (Closure Option Removed):')
 console.log(anonymousFnSafe)
 
 const anonymousFnIIFE = convertToIIFE(anonymousFnSafe)
@@ -245,12 +243,12 @@ const classJeon: any = {
 console.log('JEON Input:')
 console.log(JSON.stringify(classJeon, null, 2))
 
-const classRegular = jeon2js(classJeon, { closure: false })
+const classRegular = jeon2js(classJeon)
 console.log('\nGenerated JavaScript (Regular Mode):')
 console.log(classRegular)
 
-const classSafe = jeon2js(classJeon, { closure: true })
-console.log('\nGenerated JavaScript (Closure Mode - Safe):')
+const classSafe = jeon2js(classJeon)
+console.log('\nGenerated JavaScript (Closure Option Removed):')
 console.log(classSafe)
 
 const classIIFE = convertToIIFE(classSafe)
@@ -306,12 +304,12 @@ const namedClassJeon: any = {
 console.log('JEON Input:')
 console.log(JSON.stringify(namedClassJeon, null, 2))
 
-const namedClassRegular = jeon2js(namedClassJeon, { closure: false })
+const namedClassRegular = jeon2js(namedClassJeon)
 console.log('\nGenerated JavaScript (Regular Mode):')
 console.log(namedClassRegular)
 
-const namedClassSafe = jeon2js(namedClassJeon, { closure: true })
-console.log('\nGenerated JavaScript (Closure Mode - Safe):')
+const namedClassSafe = jeon2js(namedClassJeon)
+console.log('\nGenerated JavaScript (Closure Option Removed):')
 console.log(namedClassSafe)
 
 const namedClassIIFE = convertToIIFE(namedClassSafe)
@@ -348,12 +346,12 @@ const arrowFnJeon: any = {
 console.log('JEON Input:')
 console.log(JSON.stringify(arrowFnJeon, null, 2))
 
-const arrowFnRegular = jeon2js(arrowFnJeon, { closure: false })
+const arrowFnRegular = jeon2js(arrowFnJeon)
 console.log('\nGenerated JavaScript (Regular Mode):')
 console.log(arrowFnRegular)
 
-const arrowFnSafe = jeon2js(arrowFnJeon, { closure: true })
-console.log('\nGenerated JavaScript (Closure Mode - Safe):')
+const arrowFnSafe = jeon2js(arrowFnJeon)
+console.log('\nGenerated JavaScript (Closure Option Removed):')
 console.log(arrowFnSafe)
 
 const arrowFnIIFE = convertToIIFE(arrowFnSafe)
@@ -391,12 +389,12 @@ const myFunc1Jeon: any = {
 console.log('JEON Input:')
 console.log(JSON.stringify(myFunc1Jeon, null, 2))
 
-const myFunc1Regular = jeon2js(myFunc1Jeon, { closure: false })
+const myFunc1Regular = jeon2js(myFunc1Jeon)
 console.log('\nGenerated JavaScript (Regular Mode):')
 console.log(myFunc1Regular)
 
-const myFunc1Safe = jeon2js(myFunc1Jeon, { closure: true })
-console.log('\nGenerated JavaScript (Closure Mode - Safe):')
+const myFunc1Safe = jeon2js(myFunc1Jeon)
+console.log('\nGenerated JavaScript (Closure Option Removed):')
 console.log(myFunc1Safe)
 
 const myFunc1IIFE = convertToIIFE(myFunc1Safe)
@@ -445,12 +443,12 @@ const myClass1Jeon: any = {
 console.log('JEON Input:')
 console.log(JSON.stringify(myClass1Jeon, null, 2))
 
-const myClass1Regular = jeon2js(myClass1Jeon, { closure: false })
+const myClass1Regular = jeon2js(myClass1Jeon)
 console.log('\nGenerated JavaScript (Regular Mode):')
 console.log(myClass1Regular)
 
-const myClass1Safe = jeon2js(myClass1Jeon, { closure: true })
-console.log('\nGenerated JavaScript (Closure Mode - Safe):')
+const myClass1Safe = jeon2js(myClass1Jeon)
+console.log('\nGenerated JavaScript (Closure Option Removed):')
 console.log(myClass1Safe)
 
 const myClass1IIFE = convertToIIFE(myClass1Safe)

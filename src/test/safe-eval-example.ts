@@ -10,15 +10,11 @@ const dangerousJeon = {
     }
 }
 
-console.log('\n1. Regular mode (potentially unsafe):')
-const regularJs = jeon2js(dangerousJeon)
-console.log(regularJs)
+console.log('\n1. Conversion:')
+const js = jeon2js(dangerousJeon)
+console.log(js)
 
-console.log('\n2. Closure mode (safe evaluation):')
-const safeJs = jeon2js(dangerousJeon, { closure: true })
-console.log(safeJs)
-
-console.log('\n3. Safe evaluation with evalJeon:')
+console.log('\n2. Safe evaluation with evalJeon:')
 // This would be the safe way to execute the function
 const safeContext = {
     alert: (msg: string) => console.log(`Safe alert: ${msg}`)

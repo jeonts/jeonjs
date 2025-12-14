@@ -41,6 +41,7 @@ This section provides a comprehensive reference for all operators supported in J
 | `>` | `{">": [operand1, operand2]}` | Array of 2 operands | `a > b` | `{">": ["@a", "@b"]}` |
 | `<=` | `{"<=": [operand1, operand2]}` | Array of 2 operands | `a <= b` | `{"<=": ["@a", "@b"]}` |
 | `>=` | `{">=": [operand1, operand2]}` | Array of 2 operands | `a >= b` | `{">=": ["@a", "@b"]}` |
+| `instanceof` | `{"instanceof": [operand1, operand2]}` | Array of 2 operands | `a instanceof b` | `{"instanceof": ["@obj", "@Array"]}` |
 
 ### Logical Operators
 
@@ -58,6 +59,11 @@ This section provides a comprehensive reference for all operators supported in J
 | `&` | `{"&": [operand1, operand2]}` | Array of 2 operands | `a & b` | `{"&": [5, 3]}` |
 | `|` | `{"|": [operand1, operand2]}` | Array of 2 operands | `a | b` | `{"|": [5, 3]}` |
 | `^` | `{"^": [operand1, operand2]}` | Array of 2 operands | `a ^ b` | `{"^": [5, 3]}` |
+
+### Bitwise Shift Operators
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
 | `<<` | `{"<<": [operand1, operand2]}` | Array of 2 operands | `a << b` | `{"<<": [5, 2]}` |
 | `>>` | `{">>": [operand1, operand2]}` | Array of 2 operands | `a >> b` | `{">>": [5, 2]}` |
 | `>>>` | `{">>>": [operand1, operand2]}` | Array of 2 operands | `a >>> b` | `{">>>": [5, 2]}` |
@@ -85,8 +91,8 @@ This section provides a comprehensive reference for all operators supported in J
 |----------|----------------|----------|----------------------|---------|
 | `++` | `{"++": operand}` | Single operand | `++a` | `{"++": "@counter"}` |
 | `--` | `{"--": operand}` | Single operand | `--a` | `{"--": "@counter"}` |
-| `++postfix` | `{"++postfix": operand}` | Single operand | `a++` | `{"++postfix": "@counter"}` |
-| `--postfix` | `{"--postfix": operand}` | Single operand | `a--` | `{"--postfix": "@counter"}` |
+| `++.` | `{"++.": operand}` | Single operand | `a++` | `{"++.": "@counter"}` |
+| `--.` | `{"--.": operand}` | Single operand | `a--` | `{"--.": "@counter"}` |
 
 ### Special Operators
 
@@ -101,6 +107,9 @@ This section provides a comprehensive reference for all operators supported in J
 | `delete` | `{"delete": operand}` | Single operand | `delete a` | `{"delete": "@value"}` |
 | `(` | `{"(": expression}` | Single operand | `(expression)` | `{"(": {"+": [1, 2]}}` |
 | `...` | `{"...": expression}` | Single operand | `...expression` | `{"...": [1, 2, 3]}` |
+| `class` | `{"class ClassName": { ... }}` | Object (Class Configuration) | `class ClassName { ... }` | `{"class Person": { ... }}` |
+| `extends` | Used within class definition | Parent class reference | `class Child extends Parent` | Used within class definition |
+| `static` | Used within class definition | Static property/method value | `static propertyName` | Used within class definition |
 
 ### Control Flow Operators
 
@@ -109,6 +118,10 @@ This section provides a comprehensive reference for all operators supported in J
 | `if` | `{"if": [condition, trueBlock, falseBlock]}` | Array of 2-3 operands | `if (condition) { trueBlock } else { falseBlock }` | `{"if": ["@condition", "doThis()", "doThat()"]}` |
 | `while` | `{"while": [condition, body]}` | Array of 2 operands | `while (condition) { body }` | `{"while": ["@condition", "doThis()"]}` |
 | `for` | `{"for": [init, condition, increment, body]}` | Array of 4 operands | `for (init; condition; increment) { body }` | `{"for": ["@i = 0", "@i < 10", "@i++", "doThis()"]}` |
+| `do` | `{"do": [body, condition]}` | Array of 2 operands | `do { body } while (condition)` | `{"do": ["doThis()", "@condition"]}` |
+| `break` | `{"break": label}` | Optional string | `break label` | `{"break": "loop1"}` |
+| `continue` | `{"continue": label}` | Optional string | `continue label` | `{"continue": "loop1"}` |
+| `switch` | `{"switch": [expression, cases, default]}` | Array of 3 operands | `switch (expression) { cases }` | Complex structure |
 
 ### Function Declaration Operators
 
@@ -128,7 +141,27 @@ This section provides a comprehensive reference for all operators supported in J
 | `yield*` | `{"yield*": expression}` | Single operand | `yield* expression` | `{"yield*": [1, 2, 3]}` |
 | `await` | `{"await": expression}` | Single operand | `await expression` | `{"await": {"fetch()": ["/api"]}}` |
 | `break` | `{"break": label}` | Optional string | `break label` | `{"break": "loop1"}` |
-| `switch` | `{"switch": [expression, cases, default]}` | Array of 3 operands | `switch (expression) { cases }` | Complex structure |
+| `continue` | `{"continue": label}` | Optional string | `continue label` | `{"continue": "loop1"}` |
+
+## Variable Declaration Operators
+
+JEON uses special operators for variable declarations:
+
+| Operator | JEON Structure | Operands | JavaScript Equivalent | Example |
+|----------|----------------|----------|----------------------|---------|
+| `@` | `{"@": { variableName: initialValue }}` | Object (Name/Value map) | `let variableName = initialValue` | `{"@": { "x": 5 }}` |
+| `@@` | `{"@@": { constantName: initialValue }}` | Object (Name/Value map) | `const constantName = initialValue` | `{"@@": { "PI": 3.14159 }}` |
+
+## Instance References
+
+JEON provides special references for accessing instance properties:
+
+| Reference | JEON Structure | JavaScript Equivalent | Example |
+|----------|----------------|----------------------|---------|
+| `@this` | Special reference | `this` | `{"@this"}` |
+| `@super` | Special reference | `super` | `{"@super"}` |
+| `@void` | Special reference | `void` | `{"@void"}` |
+| `@undefined` | Special reference | `undefined` | `{"@undefined"}` |
 
 ## JSON5 Support
 
@@ -290,7 +323,7 @@ Structure: `{"()": [function_expression, arg1, arg2, ...]}`
 
 #### JEON Example (Invoking a function found via a chain):
 
-```json
+``json
 {
   "()": [
     { ".": ["@Math", "floor"] }, 
@@ -317,27 +350,76 @@ The new operator is used to instantiate a class or constructor function. The val
 
 ### E. Member Access and Retrieval (Property Chaining)
 
-The concise `.` operator is used for retrieving a nested property's value or function object from a target. This represents sequential dot-access (`.`member) and index-access (`[key]`).
+JEON supports two operators for member access: the `.` operator for dot notation and property chaining, and the `[]` operator for bracket notation and indexed access.
+
+#### 1. Dot Notation (`.` operator)
+
+The `.` operator is used for retrieving nested property values or function objects using dot notation (`.`member).
 
 Structure: `{".": [target_expression, segment1, segment2, ...]}`
 
 - `target_expression`: The starting object instance (e.g., `@x`, `{"new": [...]}`).
-- `segmentN`: Represents a key lookup. If the segment is a literal string/number, it is used directly as the key (`target.key` or `target[index]`). If the segment is an object expression, it is evaluated to get the dynamic key (`target[evaluated_key]`).
+- `segmentN`: Literal property names as strings. These are not prefixed with `@` since they represent literal property names, not variable references.
 
 | Type | JS Construct | JEON Structure | Explanation |
 |------|--------------|----------------|-------------|
-| Dot Access Chain | `x.list.pop` | `{".": ["@x", "list", "pop"]}` | Retrieves the pop function object from the array at `x.list`. |
-| Indexed Access | `x[1]` | `{".": ["@x", 1]}` | Retrieves the value at index 1 of array `@x`. |
+| Dot Access Chain | `x.list.pop` | `{".": ["@x", "list", "pop"]}` | Retrieves the pop function object from the array at `x.list`. Property names are literal strings. |
 | Mixed Access | `x[1].data` | `{".": ["@x", 1, "data"]}` | Retrieves the data property from the object at `x[1]`. |
-| Dynamic Key | `x[y.name]` | `{".": ["@x", {".": ["@y", "name"]}]}` | Retrieves the property from `x` using the key evaluated from `y.name`. |
 
-#### JEON Example (Retrieving the current year function):
+#### 2. Bracket Notation (`[]` operator)
 
-```json
+The `[]` operator is used for bracket notation access (`[key]`) and supports both literal keys and variable references.
+
+Structure: `{"[]": [target_expression, key_expression]}`
+
+- `target_expression`: The object instance to access (e.g., `@x`, `{"new": [...]}`).
+- `key_expression`: The key to access. This can be:
+  - A literal string/number (e.g., `"propertyName"`, `1`)
+  - A variable reference prefixed with `@` (e.g., `@variableName`)
+  - An expression that evaluates to a key (e.g., `{"+": ["@a", "@b"]}`)
+
+| Type | JS Construct | JEON Structure | Explanation |
+|------|--------------|----------------|-------------|
+| Literal Key Access | `x["property"]` | `{"[]": ["@x", "property"]}` | Retrieves the value using a literal string key. |
+| Variable Reference | `x[variable]` | `{"[]": ["@x", "@variable"]}` | Retrieves the value using the value of `variable` as the key. |
+| Computed Key | `x[a + b]` | `{"[]": ["@x", {"+": ["@a", "@b"]}]}` | Retrieves the value using the result of `a + b` as the key. |
+| Nested Bracket Access | `x[list][pop]` | `{"[]": [{"[]": ["@x", "@list"]}, "@pop"]}` | Retrieves the value through nested bracket access with variable references. |
+| Nested Literal Bracket | `x["list"]["pop"]` | `{"[]": [{"[]": ["@x", "list"]}, "pop"]}` | Retrieves the value through nested bracket access with literal strings. |
+
+#### Examples:
+
+1. Dot notation with literal properties:
+``json
 {
   ".": [
-    { "new": ["Date"] }, 
+    { "new": ["@Date"] }, 
     "getFullYear"
+  ]
+}
+```
+
+2. Bracket notation with variable reference:
+``json
+{
+  "[]": ["@x", "@keyVariable"]
+}
+```
+
+3. Bracket notation with literal string:
+``json
+{
+  "[]": ["@x", "propertyName"]
+}
+```
+
+4. Nested bracket access with variables:
+``json
+{
+  "[]": [
+    {
+      "[]": ["@x", "@listName"]
+    },
+    "@propertyName"
   ]
 }
 ```
@@ -412,7 +494,7 @@ Await expressions are used in async functions to pause execution until a Promise
 
 #### JEON Example (Break statement):
 
-```json
+``json
 {
   "for": [
     { "@": { "i": 0 } },
@@ -1504,15 +1586,13 @@ Sparse arrays in JEON use special representations to distinguish between holes a
 ```json
 {
   "@@": {
-    "sparsedArray": {
-      "[": [
-        0,
-        "@undefined",
-        "@undefined",
-        "@@undefined",
-        0
-      ]
-    }
+    "sparsedArray": [
+      0,
+      "@undefined",
+      "@undefined",
+      "@@undefined",
+      0
+    ]
   }
 }
 ```
@@ -1571,7 +1651,7 @@ or
 }
 ```
 JavaScript equivalent:
-```javascript
+```
 /* This is a multi-line
  block comment
  with multiple lines */

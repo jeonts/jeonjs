@@ -280,24 +280,7 @@ try {
     console.error('❌ Object and array operations test failed:', error)
 }
 
-console.log('\n--- Testing Closure Mode ---')
-try {
-    const code = 'function add(a, b) { return a + b; }'
-    const jeon = js2jeon(code)
 
-    // Regular conversion
-    const regularJs = jeon2js(jeon)
-    console.log('✅ Regular conversion successful')
-
-    // Closure mode conversion
-    const closureJs = jeon2js(jeon, { closure: true })
-    console.log('✅ Closure mode conversion successful')
-
-    expect(typeof regularJs).toBe('string')
-    expect(typeof closureJs).toBe('string')
-} catch (error) {
-    console.error('❌ Closure mode test failed:', error)
-}
 
 console.log('\n--- Testing Complete Round-trip ---')
 try {

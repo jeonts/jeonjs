@@ -3,9 +3,8 @@
  * @param operands The operands for the switch statement
  * @param visit The visitor function to process nested elements
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
- * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
-export function visitSwitch(operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
+export function visitSwitch(operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON): string {
     if (!Array.isArray(operands) || operands.length !== 2) {
         return ''
     }

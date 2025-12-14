@@ -14,15 +14,15 @@ export function visitProgram(node: acorn.Program & { comments?: any[] }, options
                 // If the result is an object, add comments to it
                 if (typeof result === 'object' && result !== null && !Array.isArray(result)) {
                     return {
-                        '//': nonEmptyComments.map((comment: any) => comment.value),
-                        ...result
+                        ...result,
+                        '//': nonEmptyComments.map((comment: any) => comment.value)
                     }
                 }
                 // For other cases, wrap in an object with comments
                 else {
                     return {
-                        '//': nonEmptyComments.map((comment: any) => comment.value),
-                        'result': result
+                        'result': result,
+                        '//': nonEmptyComments.map((comment: any) => comment.value)
                     }
                 }
             }
@@ -57,14 +57,14 @@ export function visitProgram(node: acorn.Program & { comments?: any[] }, options
             if (stmtComments.length > 0) {
                 if (typeof stmtResult === 'object' && stmtResult !== null && !Array.isArray(stmtResult)) {
                     statementsWithComments.push({
-                        '//': stmtComments,
-                        ...stmtResult
+                        ...stmtResult,
+                        '//': stmtComments
                     })
                 } else {
                     // Wrap non-object results
                     statementsWithComments.push({
-                        '//': stmtComments,
-                        'statement': stmtResult
+                        'statement': stmtResult,
+                        '//': stmtComments
                     })
                 }
             } else {

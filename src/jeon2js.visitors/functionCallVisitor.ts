@@ -9,9 +9,8 @@
  * @param jeon The JEON object containing the function call
  * @param visit The visitor function to process nested elements
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
- * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
-export function visitFunctionCall(keys: string[], jeon: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
+export function visitFunctionCall(keys: string[], jeon: any, visit: (item: any) => string, jsonImpl?: typeof JSON): string {
     // Shorthand function call syntax is not supported
     // Users must use the explicit '()' operator instead
     return ''

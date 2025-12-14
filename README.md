@@ -4,6 +4,7 @@ A bidirectional converter between JEON (JSON-based Executable Object Notation) a
 
 [View the full JEON specification](./spec.md)
 
+[View detailed operator documentation](./OPERATORS.md)
 ## Overview
 
 ## Demo

@@ -25,9 +25,9 @@ try {
     console.log('JEON representation:')
     console.log(JSON.stringify(jeon1, null, 2))
 
-    // Convert JEON back to JavaScript with closure mode
-    console.log('\nConverting JEON to JavaScript with closure mode:')
-    const jsWithClosure = jeon2js(jeon1, { closure: true })
+    // Convert JEON back to JavaScript without closure mode
+    console.log('\nConverting JEON to JavaScript without closure mode:')
+    const jsWithClosure = jeon2js(jeon1)
     console.log(jsWithClosure)
 
     // Apply IIFE conversion
@@ -67,9 +67,9 @@ try {
     console.log('JEON representation:')
     console.log(JSON.stringify(jeon2, null, 2))
 
-    // Convert JEON back to JavaScript with closure mode
-    console.log('\nConverting JEON to JavaScript with closure mode:')
-    const jsWithClosure = jeon2js(jeon2, { closure: true })
+    // Convert JEON back to JavaScript without closure mode
+    console.log('\nConverting JEON to JavaScript without closure mode:')
+    const jsWithClosure = jeon2js(jeon2)
     console.log(jsWithClosure)
 
     // Apply IIFE conversion
@@ -111,9 +111,9 @@ try {
     console.log('JEON representation:')
     console.log(JSON.stringify(jeon3, null, 2))
 
-    // Convert JEON back to JavaScript with closure mode
-    console.log('\nConverting JEON to JavaScript with closure mode:')
-    const jsWithClosure = jeon2js(jeon3, { closure: true })
+    // Convert JEON back to JavaScript without closure mode
+    console.log('\nConverting JEON to JavaScript without closure mode:')
+    const jsWithClosure = jeon2js(jeon3)
     console.log(jsWithClosure)
 
     // Apply IIFE conversion

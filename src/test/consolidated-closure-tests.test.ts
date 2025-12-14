@@ -16,15 +16,15 @@ test('Consolidated Closure Functionality Tests', () => {
     const regularResult = jeon2js(functionJeon)
     console.log(regularResult)
 
-    // Test 2: Function declaration with closure enabled
-    console.log('\n2. Function declaration with closure enabled:')
-    const closureResult = jeon2js(functionJeon, { closure: true })
+    // Test 2: Function declaration (closure option removed)
+    console.log('\n2. Function declaration (closure option removed):')
+    const closureResult = jeon2js(functionJeon)
     console.log(closureResult)
 
     // Test 3: Arrow function with closure disabled (default)
     console.log('\n3. Arrow function with closure disabled (default):')
     const arrowFunctionJeon = {
-        '() =>': {
+        '=>': {
             'return': 'Hello World'
         }
     }
@@ -32,20 +32,20 @@ test('Consolidated Closure Functionality Tests', () => {
     const regularArrowResult = jeon2js(arrowFunctionJeon)
     console.log(regularArrowResult)
 
-    // Test 4: Arrow function with closure enabled
-    console.log('\n4. Arrow function with closure enabled:')
-    const closureArrowResult = jeon2js(arrowFunctionJeon, { closure: true })
+    // Test 4: Arrow function (closure option removed)
+    console.log('\n4. Arrow function (closure option removed):')
+    const closureArrowResult = jeon2js(arrowFunctionJeon)
     console.log(closureArrowResult)
 
-    // Test 5: Arrow function with parameters and closure enabled
-    console.log('\n5. Arrow function with parameters and closure enabled:')
+    // Test 5: Arrow function with parameters (closure option removed)
+    console.log('\n5. Arrow function with parameters (closure option removed):')
     const arrowWithParamsJeon = {
         '(x) =>': {
             'return': { '+': ['Hello World', '@x'] }
         }
     }
 
-    const arrowWithParamsResult = jeon2js(arrowWithParamsJeon, { closure: true })
+    const arrowWithParamsResult = jeon2js(arrowWithParamsJeon)
     console.log(arrowWithParamsResult)
 
     console.log('\n=== Function Closure Tests Completed ===\n')
@@ -69,13 +69,13 @@ test('Consolidated Closure Functionality Tests', () => {
     const regularClassResult = jeon2js(classJeon)
     console.log(regularClassResult)
 
-    // Test class with getter/setter with closure enabled
-    console.log('\n7. Class with getter/setter with closure enabled:')
-    const closureClassResult = jeon2js(classJeon, { closure: true })
+    // Test class with getter/setter (closure option removed)
+    console.log('\n7. Class with getter/setter (closure option removed):')
+    const closureClassResult = jeon2js(classJeon)
     console.log(closureClassResult)
 
-    // Test class with method that has parameters and closure enabled
-    console.log('\n8. Class with method that has parameters and closure enabled:')
+    // Test class with method that has parameters (closure option removed)
+    console.log('\n8. Class with method that has parameters (closure option removed):')
     const classWithMethodParams = {
         'class Calculator': {
             'add(a, b)': {
@@ -84,7 +84,7 @@ test('Consolidated Closure Functionality Tests', () => {
         }
     }
 
-    const classWithMethodParamsResult = jeon2js(classWithMethodParams, { closure: true })
+    const classWithMethodParamsResult = jeon2js(classWithMethodParams)
     console.log(classWithMethodParamsResult)
 
     console.log('\n=== Class Closure Tests Completed ===\n')
@@ -109,13 +109,13 @@ test('Consolidated Closure Functionality Tests', () => {
     console.log('JEON input:')
     console.log(JSON.stringify(jeon, null, 2))
 
-    console.log('\n--- Without closure ---')
-    const codeWithout = jeon2js(jeon, { closure: false })
+    console.log('\n--- Without closure option (default behavior) ---')
+    const codeWithout = jeon2js(jeon)
     console.log('Generated code:')
     console.log(codeWithout)
 
-    console.log('\n--- With closure ---')
-    const codeWith = jeon2js(jeon, { closure: true })
+    console.log('\n--- Without closure option (explicit) ---')
+    const codeWith = jeon2js(jeon)
     console.log('Generated code:')
     console.log(codeWith)
 

@@ -1,14 +1,16 @@
 import * as acorn from 'acorn'
 import { visitorRegistry } from './registry'
 import { visitArrayExpression } from './arrayExpression'
+import { JeonExpression } from '../JeonExpression'
 
 /**
  * Converts an AST node to JEON format
  * @param node The AST node to convert
  * @param options Conversion options
  * @param options.json The JSON implementation to use (JSON or JSON5)
+ * @param options.iife Whether to automatically wrap expressions in an IIFE
  */
-export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
+export function ast2jeon(node: any, options?: { json?: typeof JSON, iife?: boolean }): JeonExpression | null {
     if (!node) return null
 
     // Check if we have a visitor for this node type
@@ -127,10 +129,11 @@ export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
             const isGenerator = funcNode.generator ? '*' : ''
 
             if (node.type === 'ArrowFunctionExpression') {
+                // For arrow functions, we need to return the correct structure:
+                // { "(param1, param2) =>": body }
                 const paramStr = params.length > 0 ? `(${params.join(', ')})` : '()'
-                const prefix = funcNode.async ? 'async ' : ''
                 return {
-                    [`${prefix}${paramStr} =>`]: ast2jeon(funcNode.body, options)
+                    [`${paramStr} =>`]: ast2jeon(funcNode.body, options)
                 }
             } else {
                 const functionName = funcNode.id ? ` ${(funcNode.id as acorn.Identifier).name}` : ''
@@ -155,6 +158,7 @@ export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
             if ((node as acorn.BlockStatement).body.length === 1) {
                 return ast2jeon((node as acorn.BlockStatement).body[0], options)
             }
+            // Return array directly to satisfy JeonExpression type
             return (node as acorn.BlockStatement).body.map(stmt => ast2jeon(stmt, options))
 
         case 'VariableDeclaration':
@@ -166,19 +170,45 @@ export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
                     declarations[(decl.id as acorn.Identifier).name] = decl.init ? ast2jeon(decl.init, options) : null
                 } else if (decl.id.type === 'ObjectPattern') {
                     // Handle object destructuring patterns like const {a, b} = obj
-                    // For now, we'll create individual variable assignments for each property
-                    // This is a simplified approach - in a full implementation, we'd need to 
-                    // evaluate the right-hand side and extract properties
                     const initExpr = decl.init ? ast2jeon(decl.init, options) : null
                     // Store the initialization expression so we can reference it later
                     declarations[`_destructuring_source`] = initExpr
-                    
+
                     // For each property in the object pattern, create a variable assignment
                     for (const prop of (decl.id as acorn.ObjectPattern).properties) {
                         if (prop.type === 'Property' && prop.key.type === 'Identifier') {
                             const propName = (prop.key as acorn.Identifier).name
                             // We'll mark these as needing to be resolved from the source object
                             declarations[propName] = `@[${propName}]` // Special marker for destructured properties
+                        }
+                    }
+                } else if (decl.id.type === 'ArrayPattern') {
+                    // Handle array destructuring patterns like const [a, b] = arr
+                    const initExpr = decl.init ? ast2jeon(decl.init, options) : null
+                    // Store the initialization expression so we can reference it later
+                    declarations[`_destructuring_source`] = initExpr
+
+                    // Process each element in the array pattern
+                    const arrayPattern = decl.id as acorn.ArrayPattern
+                    for (let i = 0; i < arrayPattern.elements.length; i++) {
+                        const element = arrayPattern.elements[i]
+                        if (element) {
+                            if (element.type === 'Identifier') {
+                                // Simple identifier like 'a' in [a, b]
+                                const varName = (element as acorn.Identifier).name
+                                // Mark this as needing to be resolved from the source array at index i
+                                declarations[varName] = `@[${i}]` // Special marker for destructured array elements
+                            } else if (element.type === 'RestElement') {
+                                // Rest element like '...rest' in [a, b, ...rest]
+                                const arg = (element as any).argument
+                                if (arg && arg.type === 'Identifier') {
+                                    const varName = arg.name
+                                    // Mark this as needing to be resolved as the rest of the array from index i
+                                    declarations[varName] = `@[...${i}]` // Special marker for rest elements
+                                }
+                            }
+                            // Note: For nested patterns like [[a, b]] or [{a, b}], we would need more complex handling
+                            // For now, we'll focus on simple identifiers and rest elements
                         }
                     }
                 }
@@ -271,12 +301,30 @@ export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
             }
 
         case 'Identifier':
+            // Return identifier as a string value to satisfy JeonValue type
             return `@${(node as acorn.Identifier).name}`
 
         case 'Literal':
-            return (node as acorn.Literal).value
+            // Return as object to satisfy JeonObject type
+            // Handle undefined, bigint, and RegExp values properly
+            const literalValue = (node as acorn.Literal).value
+            // Convert problematic types to string representations to avoid type issues
+            let processedValue: any = literalValue
+            if (literalValue !== undefined) {
+                if (typeof literalValue === 'bigint') {
+                    processedValue = literalValue.toString()
+                } else if (literalValue instanceof RegExp) {
+                    processedValue = literalValue.toString()
+                }
+            } else {
+                processedValue = null
+            }
+            return {
+                'literal': processedValue
+            }
 
         case 'ThisExpression':
+            // Return this as a string value to satisfy JeonValue type
             return '@this'
 
         case 'AwaitExpression':
@@ -312,15 +360,19 @@ export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
 
         case 'SwitchStatement':
             const switchStmt = node as acorn.SwitchStatement
-            const cases = switchStmt.cases.map(caseClause => {
+            const cases: any[] = switchStmt.cases.map(caseClause => {
                 if (caseClause.test) {
                     return {
                         'case': ast2jeon(caseClause.test, options),
-                        'body': caseClause.consequent.map(consequent => ast2jeon(consequent, options))
+                        'body': {
+                            'statements': caseClause.consequent.map(consequent => ast2jeon(consequent, options))
+                        }
                     }
                 } else {
                     return {
-                        'default': caseClause.consequent.map(consequent => ast2jeon(consequent, options))
+                        'default': {
+                            'statements': caseClause.consequent.map(consequent => ast2jeon(consequent, options))
+                        }
                     }
                 }
             })
@@ -403,7 +455,7 @@ export function ast2jeon(node: any, options?: { json?: typeof JSON }): any {
             return programResult
 
         default:
-            // For unhandled node types, return a placeholder
+            // For unhandled node types, return a placeholder as string to satisfy JeonValue type
             return `[${node.type}]`
     }
 }

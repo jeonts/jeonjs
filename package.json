@@ -29,6 +29,7 @@
   "dependencies": {
     "@mainnet-pat/json5-bigint": "^2.2.12",
     "acorn-jsx": "^5.3.2",
+    "chalk": "^5.6.2",
     "json5": "^2.2.3",
     "woby": "^1.58.40"
   },
@@ -41,6 +42,7 @@
     "autoprefixer": "^10.4.21",
     "prismjs": "^1.30.0",
     "tailwindcss": "^4.1.16",
+    "ts-node": "^10.9.2",
     "tsx": "^4.7.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.12"

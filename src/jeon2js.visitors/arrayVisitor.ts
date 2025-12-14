@@ -4,9 +4,8 @@
  * @param visit The visitor function to process nested elements
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
  * @param isTopLevel Whether this is a top-level call (default: false)
- * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
-export function visitArray(jeon: any[], visit: (item: any) => string, jsonImpl?: typeof JSON, isTopLevel: boolean = false, closure: boolean = false): string {
+export function visitArray(jeon: any[], visit: (item: any) => string, jsonImpl?: typeof JSON, isTopLevel: boolean = false): string {
     // Handle execution blocks (arrays)
     // Check if this array contains a spread operator
     if (jeon.length === 1 && typeof jeon[0] === 'object' && jeon[0] !== null && jeon[0]['...']) {

@@ -66,7 +66,7 @@ test('Function Expression JEON Tests', () => {
 
             // Convert JEON to JS
             // Cast to any to avoid type issues
-            const result = jeon2js(jeon as any, { closure: name.includes('closure enabled') })
+            const result = jeon2js(jeon as any)
             console.log(result)
 
             // Check for expected elements

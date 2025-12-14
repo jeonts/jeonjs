@@ -43,11 +43,22 @@ import { visitParenthesizedExpression } from './parenthesizedExpression'
 import { visitEmptyStatement } from './emptyStatement'
 import { visitCommentNode } from './commentNode'
 import { visitSequenceExpression } from './sequenceExpression'
+import { visitIIFE } from './iifeHandler'
 
 export const visitorRegistry: Record<string, (node: any, options?: { json?: typeof JSON }) => any> = {
     'BinaryExpression': (node, options) => visitBinaryExpression(node, options),
     'UnaryExpression': (node, options) => visitUnaryExpression(node, options),
-    'Program': (node, options) => visitProgram(node, options),
+    'Program': (node, options) => {
+        // Handle IIFE conversion if enabled
+        if (options && (options as any).iife) {
+            const visitor = visitorRegistry['IIFE']
+            if (visitor) {
+                return visitor(node, options)
+            }
+        }
+        // Otherwise use the regular program visitor
+        return visitProgram(node, options)
+    },
     'Identifier': (node, options) => visitIdentifier(node, options),
     'Literal': (node, options) => visitLiteral(node, options),
     'LogicalExpression': (node, options) => visitLogicalExpression(node, options),
@@ -89,4 +100,5 @@ export const visitorRegistry: Record<string, (node: any, options?: { json?: type
     'EmptyStatement': (node, options) => visitEmptyStatement(node, options),
     'CommentNode': (node) => visitCommentNode(node),
     'SequenceExpression': (node, options) => visitSequenceExpression(node, options),
+    'IIFE': (node, options) => visitIIFE(node, options),
 }

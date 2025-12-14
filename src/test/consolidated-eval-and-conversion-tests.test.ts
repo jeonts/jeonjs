@@ -122,12 +122,12 @@ test('Consolidated Eval and Conversion Tests', () => {
     console.log(JSON.stringify(jeon3, null, 2))
 
     console.log('\n--- Without closure ---')
-    const codeWithout = jeon2js(jeon3, { closure: false })
+    const codeWithout = jeon2js(jeon3)
     console.log('Generated code:')
     console.log(codeWithout)
 
-    console.log('\n--- With closure ---')
-    const codeWith = jeon2js(jeon3, { closure: true })
+    console.log('\n--- Without closure option ---')
+    const codeWith = jeon2js(jeon3)
     console.log('Generated code:')
     console.log(codeWith)
 

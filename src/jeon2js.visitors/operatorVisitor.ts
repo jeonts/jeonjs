@@ -4,10 +4,9 @@
  * @param operands The operands for the operator
  * @param visit The visitor function to process nested elements
  * @param jsonImpl The JSON implementation to use (JSON or JSON5)
- * @param closure Whether to enable closure mode for safe evaluation (default: false)
  */
 import { visitArray } from './arrayVisitor'
-export function visitOperator(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON, closure: boolean = false): string {
+export function visitOperator(op: string, operands: any, visit: (item: any) => string, jsonImpl?: typeof JSON): string {
     // Handle unary operators
     switch (op) {
         case '-':
@@ -41,8 +40,8 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
             }
             break
 
-        case '++postfix':
-        case '--postfix':
+        case '++.':
+        case '--.':
             // Handle postfix increment/decrement operators
             const actualOp = op.substring(0, 2)
             if (typeof operands !== 'undefined') {
@@ -72,58 +71,6 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
     }
 
     switch (op) {
-        case '[':
-            // Handle array literals
-            if (Array.isArray(operands)) {
-                // For array literals, we want to preserve the elements as array elements, not convert them to statements
-                // Process array elements directly without statement detection logic
-                const elementStrings = operands.map(item => {
-                    // Handle special array element cases for sparse arrays
-                    if (item === '@undefined') {
-                        // @undefined represents a sparse array hole
-                        return null
-                    } else if (item === '@@undefined') {
-                        // @@undefined represents an explicit undefined in the array
-                        return 'undefined'
-                    } else {
-                        return visit(item)
-                    }
-                })
-
-                // Join elements, handling special formatting for comments and sparse arrays
-                const formattedElements = []
-                for (let i = 0; i < elementStrings.length; i++) {
-                    const element = elementStrings[i]
-
-                    // Add the element (or empty slot for sparse arrays)
-                    if (element !== null) {
-                        // Add a space before non-first elements that are not comments
-                        if (formattedElements.length > 0 && !(element && element.match(/^\n\/\//) && element.endsWith('\n'))) {
-                            formattedElements.push(' ')
-                        }
-                        formattedElements.push(element)
-                    }
-
-                    // Add separator after the element (except for the last one)
-                    if (i < elementStrings.length - 1) {
-                        // Check if this element is a comment (starts with newline and //)
-                        if (element && element.match(/^\n\/\//) && element.endsWith('\n')) {
-                            // For comment elements, add a comma and newline
-                            formattedElements.push(',\n')
-                        } else if (element === null) {
-                            // For null elements (sparse holes), just add a comma
-                            formattedElements.push(',')
-                        } else {
-                            // For regular elements, add a comma
-                            formattedElements.push(',')
-                        }
-                    }
-                }
-
-                return `[${formattedElements.join('')}]`
-            }
-            return '[]'
-
         case '(':
             // Handle parentheses expressions'{}
             return `(${visit(operands)})`
@@ -219,12 +166,6 @@ export function visitOperator(op: string, operands: any, visit: (item: any) => s
             const params = paramMatch ? paramMatch[1].split(',').map(p => p.trim()).filter(p => p) : []
             const body = Array.isArray(operands) ? operands.map(stmt => visit(stmt)).join(';\n  ') : visit(operands)
 
-            // If closure mode is enabled, wrap the function in evalJeon
-            if (closure) {
-                // Create a function that calls evalJeon with the body and parameters
-                const contextObj = params.map(p => `${p}: ${p}`).join(', ')
-                return `function(${params.join(', ')}) { return evalJeon(${JSON.stringify(operands)}, {${contextObj}}); }`
-            }
 
             return `function(${params.join(', ')}) {\n  ${body}\n}`
 

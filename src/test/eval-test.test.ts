@@ -11,7 +11,7 @@ const functionJeon = {
     }
 }
 
-const functionCode = jeon2js(functionJeon, { closure: true })
+const functionCode = jeon2js(functionJeon)
 console.log('Generated code:', functionCode)
 
 // Evaluate the generated code
@@ -33,7 +33,7 @@ const arrowFunctionJeon = {
     }
 }
 
-const arrowCode = jeon2js(arrowFunctionJeon, { closure: true })
+const arrowCode = jeon2js(arrowFunctionJeon)
 console.log('Generated code:', arrowCode)
 
 // Evaluate the generated code
@@ -66,7 +66,7 @@ const classJeon = {
     }
 }
 
-const classCode = jeon2js(classJeon, { closure: true })
+const classCode = jeon2js(classJeon)
 console.log('Generated code:', classCode)
 
 // Evaluate the generated class
@@ -98,7 +98,7 @@ const calculatorJeon = {
     }
 }
 
-const calculatorCode = jeon2js(calculatorJeon, { closure: true })
+const calculatorCode = jeon2js(calculatorJeon)
 console.log('Generated code:', calculatorCode)
 
 // Evaluate the calculator class
@@ -145,7 +145,7 @@ const objectJeon = {
     }
 }
 
-const objectCode = jeon2js(objectJeon, { closure: true })
+const objectCode = jeon2js(objectJeon)
 console.log('Generated code:', objectCode)
 
 // Evaluate the object literal - we need to handle const declarations differently

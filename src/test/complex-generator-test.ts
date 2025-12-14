@@ -22,18 +22,18 @@ console.log(complexGeneratorCode)
 try {
     const jeon = js2jeon(complexGeneratorCode)
     console.log('JEON:', JSON.stringify(jeon, null, 2))
-    
+
     // Create a context to hold the function
     const context: any = {}
     console.log('Creating generator function...')
     const result = evalJeon(jeon, context)
     console.log('Generator function created successfully:', typeof result)
-    
+
     // Now try to call the generator
     console.log('Calling generator function...')
     const gen = result(20)
     console.log('Generator object:', typeof gen)
-    
+
     // Get all values from the generator
     console.log('Getting all values...')
     let count = 1
@@ -44,7 +44,7 @@ try {
         count++
     }
     console.log('Generator finished')
-    
+
 } catch (error: any) {
     console.error('Error:', error.message)
     console.error('Stack:', error.stack)
@@ -73,18 +73,18 @@ console.log(conditionalGeneratorCode)
 try {
     const jeon2 = js2jeon(conditionalGeneratorCode)
     console.log('JEON:', JSON.stringify(jeon2, null, 2))
-    
+
     // Create a context to hold the function
     const context2: any = {}
     console.log('Creating conditional generator function...')
     const result2 = evalJeon(jeon2, context2)
     console.log('Conditional generator function created successfully:', typeof result2)
-    
+
     // Now try to call the generator
     console.log('Calling conditional generator function...')
     const gen2 = result2(10)
     console.log('Generator object:', typeof gen2)
-    
+
     // Get all values from the generator
     console.log('Getting all values...')
     let count2 = 1
@@ -95,7 +95,7 @@ try {
         count2++
     }
     console.log('Generator finished')
-    
+
 } catch (error: any) {
     console.error('Error:', error.message)
     console.error('Stack:', error.stack)

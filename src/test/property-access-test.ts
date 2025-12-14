@@ -28,7 +28,7 @@ try {
     console.log('Type of result:', typeof result)
     console.log('Has greet method:', typeof result.greet)
     console.log('✓ Object creation test passed\n')
-    
+
     // Now test property access separately
     const propAccessCode = `
 const obj = greeter;
@@ -41,7 +41,7 @@ obj.greet
     console.log('Property access result:', propResult)
     console.log('Type of property access result:', typeof propResult)
     console.log('✓ Property access test passed\n')
-    
+
     // Now test method call
     const methodCallCode = `
 const obj = greeter;
@@ -53,7 +53,7 @@ obj.greet("World")
     const methodResult = evalJeon(methodJeon, { greeter: result })
     console.log('Method call result:', methodResult)
     console.log('✓ Method call test passed\n')
-    
+
 } catch (error: any) {
     console.error('✗ Test failed:', error.message)
     console.error('Stack:', error.stack)

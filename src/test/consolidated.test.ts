@@ -114,8 +114,8 @@ test('Array literals', () => {
         { '+': [2, 3] },
         'test'
     ])
-    // Arrays are evaluated as statement sequences, returning the last statement's result
-    expect(result).toBe('test')
+    // Arrays without statement objects are now treated as array literals
+    expect(result).toEqual([1, 5, 'test'])
 })
 
 // Test function calls with JEON format
@@ -315,20 +315,6 @@ test('Object and array operations', () => {
     expect(propAccessResult).toBe(Math.PI)
 })
 
-// Test closure mode
-test('Closure mode conversion', () => {
-    const code = 'function add(a, b) { return a + b; }'
-    const jeon = js2jeon(code)
-
-    // Regular conversion
-    const regularJs = jeon2js(jeon)
-
-    // Closure mode conversion
-    const closureJs = jeon2js(jeon, { closure: true })
-
-    expect(typeof regularJs).toBe('string')
-    expect(typeof closureJs).toBe('string')
-})
 
 // Test round-trip conversion with evaluation
 test('Complete round-trip: js2jeon -> jeon2js -> evalJeon', () => {
