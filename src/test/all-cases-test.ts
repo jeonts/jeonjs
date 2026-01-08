@@ -1645,7 +1645,8 @@ function runTests() {
                     failedTests++
                 } else {
                     console.log(chalk.green("✅ Eval result matches for " + name))
-                    console.log("Result: " + JSON.stringify(result))
+                    console.log("Expected result: " + JSON.stringify(expectedEval))
+                    console.log("Actual result: " + JSON.stringify(result))
                     passedTests++
                 }
             } else {
