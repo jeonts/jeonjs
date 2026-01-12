@@ -1,1 +1,0 @@
-import { jeon2js } from '../jeon2js'; const operands = { 'bigint': { 'bigint': '1234567890123456789' } }; console.log('Operands:', JSON.stringify(operands, null, 2)); const result = jeon2js(operands); console.log('Result:', result)

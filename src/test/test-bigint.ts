@@ -1,1 +1,0 @@
-import { js2jeon, jeon2js } from '../index'; const code = '1234567890123456789n'; try { const jeon = js2jeon(code); console.log('JEON:', JSON.stringify(jeon, null, 2)); const js = jeon2js(jeon); console.log('JavaScript:', js) } catch (error) { console.log('Error:', error.message) }

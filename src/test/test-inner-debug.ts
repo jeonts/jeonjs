@@ -1,1 +1,0 @@
-import { jeon2js } from '../jeon2js'; const innerObj = { 'bigint': '1234567890123456789' }; console.log('Processing inner object:'); const innerResult = jeon2js(innerObj); console.log('Result:', innerResult)
