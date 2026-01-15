@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
         "target": "ES2020",
-        "module": "Node16",
         "lib": [
             "ES2020",
             "DOM"
@@ -14,7 +13,7 @@
         "forceConsistentCasingInFileNames": true,
         "declaration": true,
         "emitDeclarationOnly": true,
-        "moduleResolution": "node16",
+        "moduleResolution": "bundler",
         "jsx": "react-jsx",
         "jsxImportSource": "woby",
         "types": [

@@ -1,8 +1,32 @@
-import { jeon2js } from './jeon2js'
 import { JeonExpression, JeonOperatorMap, JeonObject } from './JeonExpression'
 
 // Import all operator evaluation functions
 import * as operatorEvaluator from './eval.jeon/operatorEvaluator'
+
+/**
+ * Helper function to assign function parameters to context, handling rest parameters.
+ * @param params Array of parameter names (may include rest params like '...a')
+ * @param args Array of actual arguments passed to the function
+ * @param functionContext The context object to assign parameters to
+ */
+function assignParamsToContext(params: string[], args: any[], functionContext: Record<string, any>): void {
+    let restParamIndex = -1
+    let restParamName = ''
+    
+    // First pass: find rest parameter and assign regular params
+    for (let i = 0; i < params.length; i++) {
+        const param = params[i]
+        if (param.startsWith('...')) {
+            // This is a rest parameter - collect all remaining args
+            restParamIndex = i
+            restParamName = param.substring(3) // Remove '...' prefix
+            functionContext[restParamName] = args.slice(i)
+            break // Rest parameter must be last, no more regular params after this
+        } else {
+            functionContext[param] = args[i]
+        }
+    }
+}
 
 /**
  * Safe context object that serves as fallback for variable lookup.
@@ -179,10 +203,8 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                             for (const key in context) {
                                 functionContext[key] = context[key]
                             }
-                            // Add the parameters
-                            params.forEach((param: string, index: number) => {
-                                functionContext[param] = args[index]
-                            })
+                            // Add the parameters (handling rest params)
+                            assignParamsToContext(params, args, functionContext)
 
                             // Evaluate the function body with the new context
                             if (Array.isArray(body)) {
@@ -279,11 +301,9 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                         const paramMatch = constructorKey.match(/\(([^)]*)\)/)
                         const params: string[] = paramMatch ? paramMatch[1].split(',').map((p: string) => p.trim()).filter((p: string) => p) : []
 
-                        // Create context with parameters and 'this'
+                        // Create context with parameters and 'this' (handling rest params)
                         const constructorContext: any = { this: this }
-                        params.forEach((param: string, index: number) => {
-                            constructorContext[param] = args[index]
-                        })
+                        assignParamsToContext(params, args, constructorContext)
 
                         // Execute constructor body statements with evalJeon
                         if (Array.isArray(constructorBody)) {
@@ -314,11 +334,9 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                     if (isStatic) {
                         // Create static method function
                         (ClassConstructor as any)[methodName] = function (...args: any[]) {
-                            // Create context with parameters (no 'this' for static methods)
+                            // Create context with parameters (no 'this' for static methods, handling rest params)
                             const methodContext: any = {}
-                            methodParams.forEach((param: string, index: number) => {
-                                methodContext[param] = args[index]
-                            })
+                            assignParamsToContext(methodParams, args, methodContext)
 
                             // Execute method body statements with evalJeon
                             if (Array.isArray(methodBody)) {
@@ -337,11 +355,9 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                     } else {
                         // Create instance method function
                         (ClassConstructor as any).prototype[methodName] = function (this: any, ...args: any[]) {
-                            // Create context with parameters and 'this'
+                            // Create context with parameters and 'this' (handling rest params)
                             const methodContext: any = { this: this }
-                            methodParams.forEach((param: string, index: number) => {
-                                methodContext[param] = args[index]
-                            })
+                            assignParamsToContext(methodParams, args, methodContext)
 
                             // Execute method body statements with evalJeon
                             if (Array.isArray(methodBody)) {
@@ -599,9 +615,7 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
             return function (...args: any[]) {
                 // Create a new context with the parameters
                 const functionContext = { ...context }
-                params.forEach((param, index) => {
-                    functionContext[param] = args[index]
-                })
+                assignParamsToContext(params, args, functionContext)
 
                 // Evaluate the function body with the new context
                 // The body is an array of statements
@@ -637,10 +651,8 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                                     for (const key in functionContext) {
                                         innerFunctionContext[key] = functionContext[key]
                                     }
-                                    // Add the parameters
-                                    funcParams.forEach((param: string, index: number) => {
-                                        innerFunctionContext[param] = funcArgs[index]
-                                    })
+                                    // Add the parameters (handling rest params)
+                                    assignParamsToContext(funcParams, funcArgs, innerFunctionContext)
 
                                     // Evaluate the function body
                                     if (Array.isArray(funcBody)) {
@@ -691,10 +703,8 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
                                     for (const key in functionContext) {
                                         innerFunctionContext[key] = functionContext[key]
                                     }
-                                    // Add the parameters
-                                    funcParams.forEach((param: string, index: number) => {
-                                        innerFunctionContext[param] = funcArgs[index]
-                                    })
+                                    // Add the parameters (handling rest params)
+                                    assignParamsToContext(funcParams, funcArgs, innerFunctionContext)
 
                                     // Evaluate the function body
                                     if (Array.isArray(funcBody)) {
@@ -777,11 +787,9 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
 
             // Create the function
             const functionResult = function (...args: any[]) {
-                // Create a new context with the parameters
+                // Create a new context with the parameters (handling rest params)
                 const functionContext = { ...context }
-                params.forEach((param: string, index: number) => {
-                    functionContext[param] = args[index]
-                })
+                assignParamsToContext(params, args, functionContext)
 
                 // Evaluate the function body with the new context
                 // The body is an array of statements
@@ -835,11 +843,9 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
 
                 // Add the function to the context so it's available for subsequent statements
                 context[funcName] = async function (...args: any[]) {
-                    // Create a new context with the parameters
+                    // Create a new context with the parameters (handling rest params)
                     const functionContext = { ...context }
-                    params.forEach((param, index) => {
-                        functionContext[param] = args[index]
-                    })
+                    assignParamsToContext(params, args, functionContext)
 
                     // Evaluate the function body with the new context
                     // The body is an array of statements
@@ -878,11 +884,9 @@ export function evalJeon(jeon: JeonExpression, context: Record<string, any> = {}
 
                 // Add the function to the context so it's available for subsequent statements
                 context[funcName] = function* (...args: any[]) {
-                    // Create a new context with the parameters
+                    // Create a new context with the parameters (handling rest params)
                     const functionContext = { ...context }
-                    params.forEach((param, index) => {
-                        functionContext[param] = args[index]
-                    })
+                    assignParamsToContext(params, args, functionContext)
 
                     // Evaluate the function body with the new context
                     // The body is an array of statements

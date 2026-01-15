@@ -21,8 +21,8 @@ export function visitFunctionDeclaration(keys: string[], jeon: any, visit: (item
                 // Check for valid parameter names (simple validation)
                 const params = paramStr.split(',').map((p: string) => p.trim()).filter((p: string) => p)
                 for (const param of params) {
-                    // Parameter names should be valid identifiers
-                    if (!/^[_$a-zA-Z][_$a-zA-Z0-9]*$/.test(param)) {
+                    // Parameter names should be valid identifiers or rest parameters (...param)
+                    if (!/^(\.\.\.)?[_$a-zA-Z][_$a-zA-Z0-9]*$/.test(param)) {
                         throw new Error(`Invalid parameter name '${param}' in function signature: ${key}`)
                     }
                 }

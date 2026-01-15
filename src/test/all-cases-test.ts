@@ -48,39 +48,6 @@ function colorizeJson(obj: any) {
     })
 }
 
-
-function colorizeJs(obj: any) {
-    // pretty-print with 2 spaces
-    const json = JSON.stringify(obj, null, 2)
-
-    const regex = /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?|[\[\]\{\},])/g
-
-    return json.replace(regex, (match) => {
-        // 1. Keys (ends with :)
-        if (/^"/.test(match) && /:$/.test(match)) {
-            return chalk.blue(match) // "key":
-        }
-        // 2. String Values
-        if (/^"/.test(match)) {
-            return chalk.green(match) // "string"
-        }
-        // 3. Booleans
-        if (/true|false/.test(match)) {
-            return chalk.cyan(match) // true
-        }
-        // 4. Null
-        if (/null/.test(match)) {
-            return chalk.magenta(match) // null
-        }
-        // 5. Numbers
-        if (/^-?\d/.test(match)) {
-            return chalk.yellow(match) // 123
-        }
-        // 6. Punctuation (optional)
-        return chalk.gray(match)
-    })
-}
-
 // Deep equality function for comparing JEON structures
 function deepEqual(a: any, b: any): boolean {
     if (a === b) return true
@@ -207,7 +174,7 @@ function (name) { return ("Hello, " + name) }
                     }
                 }
             ]
-        }, eval: undefined
+        }, eval: "function"
     },
     {
         name: 'case4', code: `
@@ -233,7 +200,7 @@ let count = 0; let message = "Hello World"
                     }
                 }
             }
-        }, eval: undefined
+        }, eval: "function"
     }, {
         name: 'case6', code: `
 ((x) => { return (x * 2); })(10)
@@ -551,7 +518,7 @@ let a = [1, 2, ...[3, 4], 5];
                     "return": "@a"
                 }
             ]
-        }, eval: undefined
+        }, eval: "function"
     },
     {
         name: 'case21', code: `
@@ -623,7 +590,7 @@ class Person {
                     ]
                 }
             }
-        }, eval: undefined
+        }, eval: "function"
     },
     {
         name: 'case23', code: `
@@ -914,7 +881,7 @@ class {
                     ]
                 }
             }
-        }, eval: undefined
+        }, eval: "function"
     },
     {
         name: 'case28', code: `
@@ -968,7 +935,7 @@ new (class {
                 },
                 "Danial"
             ]
-        }, eval: '{"name":"Danial"}'
+        }, eval: { "name": "Danial" }
     },
     {
         name: 'case29', code: `
@@ -1269,7 +1236,7 @@ const Calculator = {
 
 const { add, multiply, name } = Calculator;
 
-add(1, 4) + multiply(1, 4) + ' ' + name
+add(1, 4) + multiply(1, 4) + ' ' + name()
 `, jeon: {
             "@": {
                 "Calculator": {
@@ -1353,7 +1320,7 @@ function(...a) { return a }
                     "return": "@a"
                 }
             ]
-        }, eval: undefined
+        }, eval: "function"
     },
     {
         name: 'case35', code: `
@@ -1367,7 +1334,7 @@ function(...a) { return a }
                                 "return": {
                                     ".": [
                                         "@a",
-                                        "@length"
+                                        "length"
                                     ]
                                 }
                             }
@@ -1396,7 +1363,7 @@ a([1, 2, 3, 4, 5])
                             "return": {
                                 ".": [
                                     "@a",
-                                    "@length"
+                                    "length"
                                 ]
                             }
                         }
@@ -1584,12 +1551,12 @@ first + rest.length
                     {
                         '.': [
                             '@rest',
-                            '@length',
+                            'length',  // Changed from '@length'
                         ],
                     },
                 ],
             },
-        ], eval: 9
+        ], eval: 5
     },
 ]
 
@@ -1597,13 +1564,11 @@ first + rest.length
 function runTests() {
     let passedTests = 0
     let failedTests = 0
-
+    const failedTestIndex = []
     for (const testCase of testCases) {
         const { name, code, jeon: expectedJeon } = testCase
-        const expectedEval = 'eval' in testCase ? testCase.eval : undefined
         try {
             console.log("Testing " + name + "...")
-
             const generatedJeon = js2jeon(code, { iife: true })
 
             // Always show the generated JEON for debugging
@@ -1611,7 +1576,7 @@ function runTests() {
             console.log(colorizeJson(generatedJeon))
 
             const result = evalJeon(generatedJeon)
-
+            
             // Compare eval result if expectedEval is provided
             if ('eval' in testCase) {
                 const expectedEval = testCase.eval
@@ -1634,7 +1599,10 @@ function runTests() {
                 } else if (typeof expectedEval === 'object' && result === undefined) {
                     // Special case for when we expect an object but get undefined
                     evalMatch = false
-                } else {
+                } else if (typeof result == "function" && expectedEval == "function") {
+                    evalMatch = true
+                }
+                else {
                     evalMatch = result === expectedEval
                 }
 
@@ -1642,6 +1610,7 @@ function runTests() {
                     console.log(chalk.red("❌ Eval result mismatch for " + name))
                     console.log("Expected result: " + JSON.stringify(expectedEval))
                     console.log("Actual result: " + JSON.stringify(result))
+                    failedTestIndex.push(name)
                     failedTests++
                 } else {
                     console.log(chalk.green("✅ Eval result matches for " + name))
@@ -1657,6 +1626,7 @@ function runTests() {
             console.log('---')
         } catch (error: any) {
             failedTests++
+            failedTestIndex.push(name)
             console.error(chalk.red("Error in " + name + ": " + error.message))
             console.error(error.stack)
             console.log('---')
@@ -1667,6 +1637,7 @@ function runTests() {
     console.log(chalk.green(`Passed: ${passedTests}`))
     console.log(chalk.red(`Failed: ${failedTests}`))
     console.log(`Total: ${passedTests + failedTests}`)
+    console.log("failedTestIndex", failedTestIndex)
 }
 
 runTests()

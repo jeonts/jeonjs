@@ -6,6 +6,9 @@ export function visitFunctionDeclaration(node: acorn.FunctionDeclaration, option
         if (param.type === 'Identifier') {
             return (param as acorn.Identifier).name
         }
+        else if (param.type === "RestElement") {
+            return "..." + param.argument.name
+        }
         return ast2jeon(param, options)
     })
 

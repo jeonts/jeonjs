@@ -5,6 +5,7 @@
   "main": "dist/jeon-converter.cjs.js",
   "module": "dist/jeon-converter.es.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "build:lib": "vite build --mode lib",
     "build:app": "vite build",
