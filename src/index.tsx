@@ -12,7 +12,7 @@ import 'prismjs/components/prism-javascript'
 import 'prismjs/components/prism-json'
 // Import Acorn for IIFE detection
 import * as acorn from 'acorn'
-import jsx from 'acorn-jsx'
+import { jsx } from 'acorn-jsx'
 // Import IIFE conversion function
 import { convertToIIFE } from './iifeConverter'
 
@@ -794,24 +794,7 @@ return {
                 </svg>
                 Evaluate with evalJeon
               </button>
-
-              {/* Add context input box */}
-              <div class="mt-4">
-                <label class="block text-sm font-semibold text-green-800 mb-2 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" />
-                  </svg>
-                  Evaluation Context (JSON/JSON5):
-                </label>
-                <textarea
-                  value={evalContext}
-                  onInput={(e: any) => evalContext(e.target.value)}
-                  class="w-full h-24 font-mono text-sm p-3 border border-green-300 rounded-md bg-white text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                  placeholder='{"variableName": "value", "anotherVar": 42}'
-                />
-                <p class="mt-1 text-xs text-green-600">Enter JSON context for variable evaluation</p>
-              </div>
-
+              
               {/* Add eval result display */}
               <div class="mt-4">
                 <label class="block text-sm font-semibold text-green-800 mb-2 flex items-center">

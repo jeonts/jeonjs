@@ -21,11 +21,12 @@ export default defineConfig(({ command, mode }) => {
         outDir: 'dist',
         rollupOptions: {
           // Externalize dependencies for the library build
-          external: ['typescript', 'acorn', 'woby', 'json5', 'prismjs'],
+          external: ['typescript', 'acorn', 'acorn-jsx', 'woby', 'json5', 'prismjs'],
           output: {
             globals: {
               typescript: 'ts',
               acorn: 'acorn',
+              'acorn-jsx': 'jsx',
               woby: 'woby',
               json5: 'JSON5',
               prismjs: 'Prism'
